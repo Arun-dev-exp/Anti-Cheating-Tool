@@ -1,0 +1,50 @@
+// shared/constants.js — Sentinel Zero Constants
+// This file is shared across all modules. DO NOT modify without team agreement.
+
+// ─── Keystroke Detection ────────────────────────────────────────
+const KEYSTROKE_WINDOW_SIZE = 20;       // Number of keystrokes per analysis window
+const ENTROPY_FLAG_MS = 5;              // Variance threshold (ms²) — below this = suspicious
+
+// ─── Scoring Thresholds ─────────────────────────────────────────
+const BREACH_THRESHOLD = 35;            // Score at or below = RED (breach)
+const AMBER_THRESHOLD = 60;             // Score at or below = AMBER (warning)
+const INITIAL_SCORE = 92;               // Starting integrity index
+
+// ─── Signal Weights (penalties) ─────────────────────────────────
+const WEIGHT_KEYSTROKE = 18;
+const WEIGHT_GAZE = 15;
+const WEIGHT_PROCESS = 20;
+const WEIGHT_LIVENESS = 25;
+
+// ─── Recovery Rates (per unflagged tick) ────────────────────────
+const RECOVERY_KEYSTROKE = 3;
+const RECOVERY_GAZE = 2;
+const RECOVERY_PROCESS = 1;
+const RECOVERY_LIVENESS = 2;
+
+// ─── IPC Event Names ────────────────────────────────────────────
+const EVENTS = {
+  KEYSTROKE: 'signal:keystroke',
+  GAZE: 'signal:gaze',
+  PROCESS: 'signal:process',
+  LIVENESS: 'signal:liveness',
+  SCORE_UPDATE: 'signal:score-update',
+  BREACH: 'signal:breach',
+};
+
+module.exports = {
+  KEYSTROKE_WINDOW_SIZE,
+  ENTROPY_FLAG_MS,
+  BREACH_THRESHOLD,
+  AMBER_THRESHOLD,
+  INITIAL_SCORE,
+  WEIGHT_KEYSTROKE,
+  WEIGHT_GAZE,
+  WEIGHT_PROCESS,
+  WEIGHT_LIVENESS,
+  RECOVERY_KEYSTROKE,
+  RECOVERY_GAZE,
+  RECOVERY_PROCESS,
+  RECOVERY_LIVENESS,
+  EVENTS,
+};
