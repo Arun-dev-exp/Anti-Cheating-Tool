@@ -1,0 +1,17 @@
+{
+  "name": "process",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "node-fetch": "^2.7.0",
+    "ps-list": "^7.2.0"
+  }
+}
