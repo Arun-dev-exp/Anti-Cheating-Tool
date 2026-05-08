@@ -17,10 +17,13 @@
  */
 
 /**
+ * ProcessSignalPayload — Shape of the object emitted on EVENTS.PROCESS
+ *
  * @typedef {Object} ProcessPayload
- * @property {boolean} flagged   - True if a suspicious/blacklisted process was detected
- * @property {string} name       - Name of the flagged process (e.g., "TeamViewer.exe")
- * @property {number} ts         - Timestamp of the detection (ms since epoch)
+ * @property {boolean} flagged      - True if a suspicious process was detected
+ * @property {string} processName   - Name of the flagged process (empty string if none)
+ * @property {string} category      - 'ai_overlay' | 'screen_reader' | 'clipboard_ai' | 'unknown'
+ * @property {number} ts            - Unix timestamp (Date.now())
  */
 
 /**

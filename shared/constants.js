@@ -1,9 +1,12 @@
 // shared/constants.js — Sentinel Zero Constants
 // This file is shared across all modules. DO NOT modify without team agreement.
 
-// ─── Keystroke Detection ────────────────────────────────────────
+// ─── Keystroke Detection (DEV1) ─────────────────────────────────
 const KEYSTROKE_WINDOW_SIZE = 20;       // Number of keystrokes per analysis window
 const ENTROPY_FLAG_MS = 5;              // Variance threshold (ms²) — below this = suspicious
+
+// ─── Process Scanning (DEV3) ────────────────────────────────────
+const PROCESS_SCAN_INTERVAL_MS = 30000; // 30 seconds
 
 // ─── Scoring Thresholds ─────────────────────────────────────────
 const BREACH_THRESHOLD = 35;            // Score at or below = RED (breach)
@@ -24,10 +27,16 @@ const RECOVERY_LIVENESS = 2;
 
 // ─── IPC Event Names ────────────────────────────────────────────
 const EVENTS = {
+  // Session lifecycle
+  SESSION_START: 'session:start',
+  SESSION_END: 'session:end',
+  // Signals
   KEYSTROKE: 'signal:keystroke',
   GAZE: 'signal:gaze',
   PROCESS: 'signal:process',
   LIVENESS: 'signal:liveness',
+  DETECTION: 'signal:detection',
+  // Score
   SCORE_UPDATE: 'signal:score-update',
   BREACH: 'signal:breach',
 };
@@ -35,6 +44,7 @@ const EVENTS = {
 module.exports = {
   KEYSTROKE_WINDOW_SIZE,
   ENTROPY_FLAG_MS,
+  PROCESS_SCAN_INTERVAL_MS,
   BREACH_THRESHOLD,
   AMBER_THRESHOLD,
   INITIAL_SCORE,
