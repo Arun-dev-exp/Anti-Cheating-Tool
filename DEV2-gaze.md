@@ -1,12 +1,30 @@
-# DEV2 — Gaze Engine & Liveness PRD
+# DEV2 — Gaze Engine & Liveness PRD (MediaPipe Edition)
 **Owner:** Developer 2  
 **Module:** `src/gaze/`  
-**Branch:** `dev2/gaze`
+**Branch:** `dev2/gaze`  
+**Updated:** WebGazer replaced with Google MediaPipe Face Mesh
 
 ---
 
 ## Your Job in One Sentence
-Build the gaze detection engine (flags sustained off-screen fixation) and the liveness validator (confirms a real human is behind the camera).
+Use Google's MediaPipe to track iris position and head pose — flag when a candidate looks away from the screen for 3+ seconds, and validate that a real human is present every 10 seconds.
+
+---
+
+## Why MediaPipe, Not WebGazer
+
+If a judge asks: *"What are you using for gaze detection?"*  
+You say: *"Google's MediaPipe Face Mesh — 468 facial landmarks, iris tracking, runs entirely on-device."*
+
+That answer wins rooms. WebGazer does not.
+
+| | WebGazer | MediaPipe |
+|---|---|---|
+| Built by | Brown University | Google |
+| Landmarks | ~6 eye points | 468 face points + iris |
+| Accuracy | ~150px estimate | Precise iris centre |
+| Maintained | Rarely | Actively |
+| Production use | Academic projects | Google Meet, YouTube, Snapchat |
 
 ---
 
@@ -14,8 +32,8 @@ Build the gaze detection engine (flags sustained off-screen fixation) and the li
 
 ```
 src/gaze/
-├── gazeEngine.js   ← WebGazer wrapper + off-screen detection logic
-├── liveness.js     ← Liveness / deepfake validator
+├── gazeEngine.js   ← MediaPipe wrapper + off-screen detection logic
+├── liveness.js     ← Liveness validator (blink + micro-movement detection)
 └── index.js        ← Entry point — exports startGaze()
 ```
 
@@ -26,12 +44,16 @@ src/gaze/
 
 ## Dependencies
 
-WebGazer runs in the **renderer process** (the browser window), not the main Electron process. Load it via a script tag in `index.html`.
+MediaPipe runs entirely in the **renderer process** (browser). No npm install needed — loaded via CDN script tags.
 
-DEV4 will add this to `index.html` — coordinate with them:
+Tell DEV4 to add these to `index.html` in this exact order:
 
 ```html
-<script src="https://webgazer.cs.brown.edu/webgazer.js"></script>
+<!-- MediaPipe Face Mesh -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
 ```
 
 Also read (never edit):
@@ -40,37 +62,110 @@ Also read (never edit):
 
 ---
 
+## How MediaPipe Face Mesh Works (Read This First)
+
+MediaPipe gives you **468 landmark points** on the face every frame. Each point has `x`, `y`, `z` coordinates (normalised 0–1 relative to the video frame).
+
+For gaze detection, you care about **4 specific landmark indices:**
+
+```
+Left iris centre:  landmark[468]
+Right iris centre: landmark[473]
+Left eye outer:    landmark[33]
+Right eye outer:   landmark[263]
+```
+
+The logic is simple:
+- Calculate how far the iris centre is from the centre of the eye socket
+- If iris is shifted significantly LEFT, RIGHT, or UP — candidate is looking away
+- If no face is detected at all — candidate has left the frame
+
+You are NOT mapping gaze to screen coordinates (that's hard). You are only answering: **"Is this person looking at the screen or not?"** That's easy and reliable.
+
+---
+
 ## What to Build
 
-### 1. `gazeEngine.js` — WebGazer Wrapper
-
-**Goal:** Detect when a candidate's eyes leave the screen for more than 3 seconds.
-
-**Key constraint:** WebGazer is inaccurate. Do NOT try to detect *where* on-screen they're looking. Only detect *whether* they're looking at the screen at all. Off-screen for 3+ seconds (`GAZE_OFFSCREEN_THRESHOLD_MS`) is your trigger.
-
-**How it works:**
-1. Initialise WebGazer with `showPredictionPoints: false` (no UI dots)
-2. On each gaze prediction callback, check if `x` and `y` are within the screen bounds
-3. If gaze is off-screen, start a timer
-4. If gaze returns before 3 seconds, reset the timer — no flag
-5. If gaze stays off-screen for 3+ seconds, emit `signal:gaze` with `offScreen: true`
-6. When gaze returns, emit `signal:gaze` with `offScreen: false` (allows score recovery)
+### 1. `gazeEngine.js` — MediaPipe Gaze Detector
 
 ```js
-// gazeEngine.js — skeleton (runs in renderer process)
+// gazeEngine.js — runs in renderer process
 
 const { GAZE_OFFSCREEN_THRESHOLD_MS, EVENTS } = require('../../shared/constants');
 
-let offScreenStart = null;
-let lastGazeState = false; // false = on-screen
+// MediaPipe landmark indices
+const LANDMARKS = {
+  LEFT_IRIS:       468,
+  RIGHT_IRIS:      473,
+  LEFT_EYE_LEFT:   33,
+  LEFT_EYE_RIGHT:  133,
+  RIGHT_EYE_LEFT:  362,
+  RIGHT_EYE_RIGHT: 263,
+  NOSE_TIP:        1,
+  CHIN:            152,
+  LEFT_TEMPLE:     234,
+  RIGHT_TEMPLE:    454,
+};
 
-function isOffScreen(x, y) {
-  if (x === null || y === null) return true; // WebGazer returns null when no face detected
-  return x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight;
+// How far the iris can shift from eye centre before flagging (0.0–1.0 normalised)
+const IRIS_DEVIATION_THRESHOLD = 0.18;
+
+// Head rotation threshold (normalised units)
+const HEAD_TURN_THRESHOLD = 0.15;
+
+let offScreenStart = null;
+let lastFlagState = false;
+let faceMesh = null;
+let camera = null;
+
+// ─── Core gaze logic ──────────────────────────────────────────────────────────
+
+function getPoint(landmarks, index) {
+  return landmarks[index];
 }
 
+function irisDeviationScore(landmarks) {
+  // Left eye: how far is iris from centre of eye socket?
+  const leftEyeLeft  = getPoint(landmarks, LANDMARKS.LEFT_EYE_LEFT);
+  const leftEyeRight = getPoint(landmarks, LANDMARKS.LEFT_EYE_RIGHT);
+  const leftIris     = getPoint(landmarks, LANDMARKS.LEFT_IRIS);
+
+  const leftEyeCentreX = (leftEyeLeft.x + leftEyeRight.x) / 2;
+  const leftDeviation  = Math.abs(leftIris.x - leftEyeCentreX);
+
+  // Right eye
+  const rightEyeLeft  = getPoint(landmarks, LANDMARKS.RIGHT_EYE_LEFT);
+  const rightEyeRight = getPoint(landmarks, LANDMARKS.RIGHT_EYE_RIGHT);
+  const rightIris     = getPoint(landmarks, LANDMARKS.RIGHT_IRIS);
+
+  const rightEyeCentreX = (rightEyeLeft.x + rightEyeRight.x) / 2;
+  const rightDeviation  = Math.abs(rightIris.x - rightEyeCentreX);
+
+  return (leftDeviation + rightDeviation) / 2;
+}
+
+function isHeadTurnedAway(landmarks) {
+  // If nose tip is significantly off-centre between temples, head is turned
+  const noseTip     = getPoint(landmarks, LANDMARKS.NOSE_TIP);
+  const leftTemple  = getPoint(landmarks, LANDMARKS.LEFT_TEMPLE);
+  const rightTemple = getPoint(landmarks, LANDMARKS.RIGHT_TEMPLE);
+
+  const faceCentreX = (leftTemple.x + rightTemple.x) / 2;
+  const offset = Math.abs(noseTip.x - faceCentreX);
+
+  return offset > HEAD_TURN_THRESHOLD;
+}
+
+function isLookingAway(landmarks) {
+  // Flag if EITHER the head is turned OR iris is deviated significantly
+  const deviation = irisDeviationScore(landmarks);
+  const headTurned = isHeadTurnedAway(landmarks);
+  return deviation > IRIS_DEVIATION_THRESHOLD || headTurned;
+}
+
+// ─── Emit helper ──────────────────────────────────────────────────────────────
+
 function emitGaze(offScreen, durationMs = 0) {
-  // window.sentinelBridge is exposed by DEV4's preload.js
   window.sentinelBridge.send(EVENTS.GAZE, {
     offScreen,
     durationMs,
@@ -78,41 +173,73 @@ function emitGaze(offScreen, durationMs = 0) {
   });
 }
 
-function startGazeEngine() {
-  webgazer
-    .setGazeListener((data, elapsedTime) => {
-      if (!data) {
-        // No face detected — treat as off-screen
-        if (!offScreenStart) offScreenStart = Date.now();
-        return;
-      }
+// ─── MediaPipe result handler ─────────────────────────────────────────────────
 
-      const { x, y } = data;
-      const currentlyOff = isOffScreen(x, y);
+function onResults(results) {
+  // No face detected = off screen
+  if (!results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
+    handleOffScreen();
+    return;
+  }
 
-      if (currentlyOff) {
-        if (!offScreenStart) {
-          offScreenStart = Date.now();
-        } else {
-          const duration = Date.now() - offScreenStart;
-          if (duration >= GAZE_OFFSCREEN_THRESHOLD_MS && !lastGazeState) {
-            lastGazeState = true;
-            emitGaze(true, duration);
-          }
-        }
-      } else {
-        if (lastGazeState) {
-          lastGazeState = false;
-          emitGaze(false, 0);
-        }
-        offScreenStart = null;
-      }
-    })
-    .saveDataAcrossSessions(false)  // Privacy: no data persisted
-    .begin();
+  const landmarks = results.multiFaceLandmarks[0];
+  const lookingAway = isLookingAway(landmarks);
 
-  // Hide WebGazer's built-in video preview box
-  webgazer.showVideoPreview(false).showPredictionPoints(false);
+  if (lookingAway) {
+    handleOffScreen();
+  } else {
+    handleOnScreen();
+  }
+}
+
+function handleOffScreen() {
+  if (!offScreenStart) {
+    offScreenStart = Date.now();
+  } else {
+    const duration = Date.now() - offScreenStart;
+    if (duration >= GAZE_OFFSCREEN_THRESHOLD_MS && !lastFlagState) {
+      lastFlagState = true;
+      emitGaze(true, duration);
+    }
+  }
+}
+
+function handleOnScreen() {
+  if (lastFlagState) {
+    lastFlagState = false;
+    emitGaze(false, 0);
+  }
+  offScreenStart = null;
+}
+
+// ─── Initialise MediaPipe ─────────────────────────────────────────────────────
+
+function startGazeEngine(videoElement) {
+  faceMesh = new FaceMesh({
+    locateFile: (file) =>
+      `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+  });
+
+  faceMesh.setOptions({
+    maxNumFaces: 1,
+    refineLandmarks: true,   // Enables iris landmarks (468, 473)
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
+
+  faceMesh.onResults(onResults);
+
+  // MediaPipe Camera utility — handles frame capture loop automatically
+  camera = new Camera(videoElement, {
+    onFrame: async () => {
+      await faceMesh.send({ image: videoElement });
+    },
+    width: 640,
+    height: 480
+  });
+
+  camera.start();
+  console.log('[DEV2] MediaPipe gaze engine started');
 }
 
 module.exports = { startGazeEngine };
@@ -122,90 +249,151 @@ module.exports = { startGazeEngine };
 
 ### 2. `liveness.js` — Liveness Validator
 
-**Goal:** Confirm a real human is behind the camera every 10 seconds. Catch static photos, deepfake video loops, and empty seats.
+**Goal:** Confirm a real human is present every 10 seconds. Catch frozen video feeds, static photos, and empty seats.
 
 **How it works:**
-- Every `LIVENESS_CHECK_INTERVAL_MS` (10 seconds), grab a frame from the webcam
-- Analyse the frame for micro-movements using pixel diff between two frames 150ms apart
-- If the frame is too static (diff below threshold), liveness confidence drops
-- Emit `signal:liveness` with the result
-
-> **Important:** This is a lightweight heuristic, not ML. For a hackathon, pixel diff is enough to catch a static photo or a frozen stream.
+Now that you have MediaPipe running, liveness becomes easier and more accurate. Instead of raw pixel diff, use **landmark movement** — if the 468 face points aren't moving at all between frames, it's not a live person.
 
 ```js
-// liveness.js — skeleton (runs in renderer process)
+// liveness.js — runs in renderer process
 
 const { LIVENESS_CHECK_INTERVAL_MS, EVENTS } = require('../../shared/constants');
 
-let videoElement = null;
-const PIXEL_DIFF_THRESHOLD = 1500; // Minimum pixel diff to confirm liveness
+// Store last landmark snapshot for comparison
+let lastLandmarkSnapshot = null;
+let livenessInterval = null;
 
-function setupVideo(videoEl) {
-  videoElement = videoEl;
+// Minimum total landmark movement to confirm liveness
+// (sum of distances across all 468 points)
+const MOVEMENT_THRESHOLD = 2.5;
+
+function snapshotLandmarks(landmarks) {
+  // Snapshot just 20 key points (faster comparison, still accurate)
+  const keyPoints = [1, 33, 61, 133, 152, 234, 263, 291, 362, 389,
+                     454, 468, 473, 10, 152, 195, 197, 4, 94, 370];
+  return keyPoints.map(i => ({ x: landmarks[i].x, y: landmarks[i].y }));
 }
 
-function captureFrame(canvas, video) {
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-}
-
-function pixelDiff(frameA, frameB) {
-  let diff = 0;
-  for (let i = 0; i < frameA.length; i += 4) {
-    diff += Math.abs(frameA[i] - frameB[i]);       // R
-    diff += Math.abs(frameA[i+1] - frameB[i+1]);   // G
-    diff += Math.abs(frameA[i+2] - frameB[i+2]);   // B
+function landmarkMovement(snapA, snapB) {
+  let totalMovement = 0;
+  for (let i = 0; i < snapA.length; i++) {
+    const dx = snapA[i].x - snapB[i].x;
+    const dy = snapA[i].y - snapB[i].y;
+    totalMovement += Math.sqrt(dx * dx + dy * dy);
   }
-  return diff;
+  return totalMovement;
 }
 
-async function checkLiveness() {
-  if (!videoElement) return;
+// Called by gazeEngine with current landmarks every frame
+function updateLandmarkSnapshot(landmarks) {
+  lastLandmarkSnapshot = snapshotLandmarks(landmarks);
+}
 
-  const canvas = document.createElement('canvas');
-  canvas.width = 160;   // Small = fast
-  canvas.height = 120;
+function checkLiveness(currentLandmarks) {
+  if (!currentLandmarks) {
+    // No face = definitely not live
+    window.sentinelBridge.send(EVENTS.LIVENESS, {
+      live: false,
+      confidence: 0,
+      ts: Date.now()
+    });
+    return;
+  }
 
-  const frameA = captureFrame(canvas, videoElement);
+  if (!lastLandmarkSnapshot) {
+    // First check — just store snapshot, can't compare yet
+    lastLandmarkSnapshot = snapshotLandmarks(currentLandmarks);
+    return;
+  }
 
-  await new Promise(res => setTimeout(res, 150)); // Wait 150ms
+  const current = snapshotLandmarks(currentLandmarks);
+  const movement = landmarkMovement(lastLandmarkSnapshot, current);
 
-  const frameB = captureFrame(canvas, videoElement);
-  const diff = pixelDiff(frameA, frameB);
-
-  const live = diff > PIXEL_DIFF_THRESHOLD;
-  const confidence = Math.min(1.0, diff / (PIXEL_DIFF_THRESHOLD * 3));
+  const live = movement > MOVEMENT_THRESHOLD;
+  const confidence = Math.min(1.0, movement / (MOVEMENT_THRESHOLD * 3));
 
   window.sentinelBridge.send(EVENTS.LIVENESS, {
     live,
     confidence: parseFloat(confidence.toFixed(2)),
     ts: Date.now()
   });
+
+  // Update snapshot for next comparison
+  lastLandmarkSnapshot = current;
 }
 
-function startLivenessCheck() {
-  setInterval(checkLiveness, LIVENESS_CHECK_INTERVAL_MS);
+function startLivenessCheck(getCurrentLandmarks) {
+  livenessInterval = setInterval(() => {
+    const landmarks = getCurrentLandmarks();
+    checkLiveness(landmarks);
+  }, LIVENESS_CHECK_INTERVAL_MS);
 }
 
-module.exports = { startLivenessCheck, setupVideo };
+module.exports = { startLivenessCheck, updateLandmarkSnapshot };
 ```
 
 ---
 
 ### 3. `index.js` — Module Entry Point
 
+Wire gaze engine and liveness together. Notice liveness now feeds off MediaPipe landmarks directly — no separate webcam capture needed.
+
 ```js
 // src/gaze/index.js
 
 const { startGazeEngine } = require('./gazeEngine');
-const { startLivenessCheck, setupVideo } = require('./liveness');
+const { startLivenessCheck, updateLandmarkSnapshot } = require('./liveness');
+
+// Store the latest landmarks so liveness can access them
+let latestLandmarks = null;
 
 function startGaze(videoElement) {
-  setupVideo(videoElement);
-  startGazeEngine();
-  startLivenessCheck();
-  console.log('[DEV2] Gaze + liveness module started');
+  // Patch gazeEngine to also update liveness snapshots
+  // We monkey-patch onResults to share landmarks with liveness module
+  const { FaceMesh, Camera } = window; // MediaPipe globals from CDN
+
+  const faceMesh = new FaceMesh({
+    locateFile: (file) =>
+      `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+  });
+
+  faceMesh.setOptions({
+    maxNumFaces: 1,
+    refineLandmarks: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
+
+  // Import core logic from gazeEngine
+  const { onResults: gazeOnResults } = require('./gazeEngine');
+
+  faceMesh.onResults((results) => {
+    // Update liveness landmark snapshot
+    if (results.multiFaceLandmarks?.[0]) {
+      latestLandmarks = results.multiFaceLandmarks[0];
+      updateLandmarkSnapshot(latestLandmarks);
+    } else {
+      latestLandmarks = null;
+    }
+
+    // Run gaze logic
+    gazeOnResults(results);
+  });
+
+  const camera = new Camera(videoElement, {
+    onFrame: async () => {
+      await faceMesh.send({ image: videoElement });
+    },
+    width: 640,
+    height: 480
+  });
+
+  camera.start();
+
+  // Start liveness checks — passes current landmark getter
+  startLivenessCheck(() => latestLandmarks);
+
+  console.log('[DEV2] Gaze + liveness module started (MediaPipe)');
 }
 
 module.exports = { startGaze };
@@ -213,35 +401,26 @@ module.exports = { startGaze };
 
 ---
 
-## How DEV4 Wires You In
+## What You Can Now Tell Judges
 
-DEV4 calls your entry point from the renderer after the session starts:
+**Q: How does your gaze tracking work?**
 
-```js
-// DEV4 does this in renderer.js — you don't write this
-import { startGaze } from '../gaze/index.js';
+> "We use Google's MediaPipe Face Mesh — it maps 468 facial landmarks in real time, including precise iris position. We track both iris deviation from the eye centre and head pose simultaneously. If either signal shows the candidate looking away for over 3 seconds, the integrity score drops. Everything runs on-device, nothing leaves the machine."
 
-document.addEventListener('session:start', () => {
-  const video = document.getElementById('webcam-feed');
-  startGaze(video);
-});
-```
-
-DEV4 also adds the `<video id="webcam-feed">` element in `index.html`. Coordinate with them on the element ID — use `webcam-feed` exactly.
+That answer is bulletproof with any judge.
 
 ---
 
 ## Acceptance Criteria
 
-Before you hand off, these must all be true:
-
 - [ ] `startGaze(videoElement)` exported from `index.js`
-- [ ] Gaze off-screen flag NOT triggered by a single 1-second glance away
-- [ ] Gaze off-screen flag triggered after 3+ seconds of sustained off-screen gaze
-- [ ] `signal:gaze` emitted with correct payload (see `shared/types.js`)
+- [ ] MediaPipe initialises without errors in Electron renderer
+- [ ] Gaze flag NOT triggered by a normal 1-second glance away
+- [ ] Gaze flag triggered after 3+ sustained seconds looking away
+- [ ] `signal:gaze` emitted with correct payload
 - [ ] `signal:liveness` emitted every 10 seconds
-- [ ] Liveness check correctly returns `live: false` when video is paused or a static image
-- [ ] `saveDataAcrossSessions(false)` — WebGazer must not store any data
+- [ ] Liveness returns `live: false` when video is paused or a static image is shown
+- [ ] No WebGazer references anywhere in this module
 - [ ] No imports from `src/detection/` or `src/process/`
 
 ---
@@ -249,30 +428,31 @@ Before you hand off, these must all be true:
 ## Test It Yourself
 
 **Gaze test:**
-1. Start a session
-2. Look at the screen normally for 5 seconds (no flag expected)
-3. Look away for 4 seconds (flag expected: `offScreen: true`)
-4. Look back (recovery expected: `offScreen: false`)
+1. Sit in front of webcam, look at screen normally → no flag for 3 seconds
+2. Turn head to look at a second screen or away → flag fires after 3s
+3. Look back → recovery signal fires
 
 **Liveness test:**
-1. Cover your webcam with your hand (static) — `live: false` expected within 10 seconds
-2. Uncover — `live: true` expected on next check
+1. Hold a printed photo in front of webcam → `live: false` within 10s
+2. Cover webcam → `live: false` immediately
+3. Move normally → `live: true`
 
 ---
 
-## Privacy Notes (Know This for Judge Q&A)
+## Privacy Notes (For Judge Q&A)
 
-- WebGazer processes video locally in the browser — no video data leaves the device
-- `saveDataAcrossSessions(false)` is set — nothing persisted to localStorage
-- The liveness canvas is created, used, and discarded — never stored
+- MediaPipe processes all video **locally in the browser** using WebAssembly
+- No video frames or landmark data are sent to any server
+- Google's servers are only used to load the library files on first load — after that, everything is local
+- Zero data stored between sessions
 
 ---
 
 ## What NOT to Build
 
-- ❌ Any score calculation — that's DEV1's Bayesian engine
-- ❌ Keystroke detection — that's DEV1
-- ❌ OS process scanning — that's DEV3
-- ❌ The UI gauge or event log — that's DEV4
-- ❌ Electron main process code — that's DEV4
-- ❌ Complex ML gaze zone detection — out of scope for hackathon
+- ❌ WebGazer — do not use it at all
+- ❌ Score calculation — DEV1's Bayesian engine
+- ❌ Keystroke detection — DEV1
+- ❌ OS process scanning — DEV3
+- ❌ UI gauge or event log — DEV4
+- ❌ Mapping gaze to exact screen coordinates — unnecessary, unreliable, out of scope

@@ -1,59 +1,75 @@
+// liveness.js — runs in renderer process
+
 const { LIVENESS_CHECK_INTERVAL_MS, EVENTS } = require('../../shared/constants');
 
-let videoElement = null;
-const PIXEL_DIFF_THRESHOLD = 1500; // Minimum pixel diff to confirm liveness
+// Store last landmark snapshot for comparison
+let lastLandmarkSnapshot = null;
 let livenessInterval = null;
 
-function setupVideo(videoEl) {
-  videoElement = videoEl;
+// Minimum total landmark movement to confirm liveness
+// (sum of distances across all 468 points)
+const MOVEMENT_THRESHOLD = 2.5;
+
+function snapshotLandmarks(landmarks) {
+  // Snapshot just 20 key points (faster comparison, still accurate)
+  const keyPoints = [1, 33, 61, 133, 152, 234, 263, 291, 362, 389,
+                     454, 468, 473, 10, 152, 195, 197, 4, 94, 370];
+  return keyPoints.map(i => ({ x: landmarks[i].x, y: landmarks[i].y }));
 }
 
-function captureFrame(canvas, video) {
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  return ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-}
-
-function pixelDiff(frameA, frameB) {
-  let diff = 0;
-  for (let i = 0; i < frameA.length; i += 4) {
-    diff += Math.abs(frameA[i] - frameB[i]);       // R
-    diff += Math.abs(frameA[i+1] - frameB[i+1]);   // G
-    diff += Math.abs(frameA[i+2] - frameB[i+2]);   // B
+function landmarkMovement(snapA, snapB) {
+  let totalMovement = 0;
+  for (let i = 0; i < snapA.length; i++) {
+    const dx = snapA[i].x - snapB[i].x;
+    const dy = snapA[i].y - snapB[i].y;
+    totalMovement += Math.sqrt(dx * dx + dy * dy);
   }
-  return diff;
+  return totalMovement;
 }
 
-async function checkLiveness() {
-  if (!videoElement) return;
+// Called by gazeEngine with current landmarks every frame
+function updateLandmarkSnapshot(landmarks) {
+  lastLandmarkSnapshot = snapshotLandmarks(landmarks);
+}
 
-  const canvas = document.createElement('canvas');
-  canvas.width = 160;   // Small = fast
-  canvas.height = 120;
-
-  const frameA = captureFrame(canvas, videoElement);
-
-  await new Promise(res => setTimeout(res, 150)); // Wait 150ms
-
-  const frameB = captureFrame(canvas, videoElement);
-  const diff = pixelDiff(frameA, frameB);
-
-  const live = diff > PIXEL_DIFF_THRESHOLD;
-  const confidence = Math.min(1.0, diff / (PIXEL_DIFF_THRESHOLD * 3));
-
-  if (window.sentinelBridge) {
+function checkLiveness(currentLandmarks) {
+  if (!currentLandmarks) {
+    // No face = definitely not live
     window.sentinelBridge.send(EVENTS.LIVENESS, {
-      live,
-      confidence: parseFloat(confidence.toFixed(2)),
+      live: false,
+      confidence: 0,
       ts: Date.now()
     });
+    return;
   }
+
+  if (!lastLandmarkSnapshot) {
+    // First check — just store snapshot, can't compare yet
+    lastLandmarkSnapshot = snapshotLandmarks(currentLandmarks);
+    return;
+  }
+
+  const current = snapshotLandmarks(currentLandmarks);
+  const movement = landmarkMovement(lastLandmarkSnapshot, current);
+
+  const live = movement > MOVEMENT_THRESHOLD;
+  const confidence = Math.min(1.0, movement / (MOVEMENT_THRESHOLD * 3));
+
+  window.sentinelBridge.send(EVENTS.LIVENESS, {
+    live,
+    confidence: parseFloat(confidence.toFixed(2)),
+    ts: Date.now()
+  });
+
+  // Update snapshot for next comparison
+  lastLandmarkSnapshot = current;
 }
 
-function startLivenessCheck() {
-  if (!livenessInterval) {
-    livenessInterval = setInterval(checkLiveness, LIVENESS_CHECK_INTERVAL_MS);
-  }
+function startLivenessCheck(getCurrentLandmarks) {
+  livenessInterval = setInterval(() => {
+    const landmarks = getCurrentLandmarks();
+    checkLiveness(landmarks);
+  }, LIVENESS_CHECK_INTERVAL_MS);
 }
 
-module.exports = { startLivenessCheck, setupVideo };
+module.exports = { startLivenessCheck, updateLandmarkSnapshot };
