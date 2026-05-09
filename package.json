@@ -1,14 +1,24 @@
 {
   "name": "sentinel-zero",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "description": "Sentinel Zero — AI-powered exam integrity system",
+  "main": "main.js",
   "scripts": {
+    "test": "node tests/test_detection.js",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "electron:dev": "electron ."
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
   "dependencies": {
+    "dotenv": "^17.4.2",
+    "node-fetch": "^2.7.0",
+    "ps-list": "^7.2.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
     "next": "16.2.6",
@@ -19,6 +29,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "electron": "^42.0.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
