@@ -6,16 +6,16 @@ interface EventLogRowProps {
 }
 
 const severityConfig = {
-  info: { color: "#22C55E", dot: "●" },
-  warning: { color: "#F59E0B", dot: "⚠" },
-  breach: { color: "#EF4444", dot: "✕" },
+  info: { color: "#22C55E", icon: "check_circle" },
+  warning: { color: "#F59E0B", icon: "warning" },
+  breach: { color: "#EF4444", icon: "error" },
 };
 
 const moduleIcons: Record<string, string> = {
-  keystroke: "⌨",
-  gaze: "👁",
-  process: "⚙",
-  liveness: "🔲",
+  keystroke: "keyboard",
+  gaze: "visibility",
+  process: "memory",
+  liveness: "face",
 };
 
 export default function EventLogRow({ event }: EventLogRowProps) {
@@ -28,25 +28,27 @@ export default function EventLogRow({ event }: EventLogRowProps) {
   });
 
   return (
-    <div className="log-entry">
+    <div className="log-entry group hover:bg-bg-panel/30 transition-colors duration-150 px-5">
       {/* Timestamp */}
-      <span className="text-text-secondary shrink-0" style={{ width: "70px" }}>
+      <span className="text-text-secondary/70 shrink-0 font-mono" style={{ width: "70px", fontSize: "11px" }}>
         {time}
       </span>
 
-      {/* Severity Dot */}
-      <span style={{ color: config.color }} className="shrink-0">
-        {config.dot}
+      {/* Severity Icon */}
+      <span className="material-symbols-outlined shrink-0" style={{ color: config.color, fontSize: "14px" }}>
+        {config.icon}
       </span>
 
       {/* Module Icon */}
-      <span className="shrink-0">{moduleIcons[event.module]}</span>
+      <span className="material-symbols-outlined shrink-0 text-text-secondary/50" style={{ fontSize: "14px" }}>
+        {moduleIcons[event.module] || "info"}
+      </span>
 
       {/* Message */}
-      <span className="text-text-primary truncate flex-1">{event.message}</span>
+      <span className="text-text-primary truncate flex-1 text-[12px]">{event.message}</span>
 
       {/* Confidence */}
-      <span className="text-text-secondary shrink-0" style={{ fontSize: "10px" }}>
+      <span className="text-text-secondary/50 shrink-0 font-mono text-right" style={{ fontSize: "10px", width: "40px" }}>
         {event.confidence}%
       </span>
     </div>

@@ -1,8 +1,6 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import Sidebar from "@/components/layout/Sidebar";
-import Topbar from "@/components/layout/Topbar";
 import IntegrityGauge from "@/components/ui/IntegrityGauge";
 import StatusBadge from "@/components/ui/StatusBadge";
 import EndSessionModal from "@/components/features/EndSessionModal";
@@ -21,10 +19,7 @@ export default function ProctorDashboardPage() {
   };
 
   return (
-    <div className="min-h-screen bg-bg-base">
-      <Sidebar variant="proctor" />
-      <div className="ml-[220px]">
-        <Topbar variant="proctor" />
+    <>
         <main className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -65,8 +60,7 @@ export default function ProctorDashboardPage() {
             ))}
           </div>
         </main>
-      </div>
       <EndSessionModal visible={showEndModal} onCancel={() => setShowEndModal(false)} onConfirm={() => { setShowEndModal(false); window.location.href = "/proctor/session/SZ-8821/report"; }} />
-    </div>
+    </>
   );
 }

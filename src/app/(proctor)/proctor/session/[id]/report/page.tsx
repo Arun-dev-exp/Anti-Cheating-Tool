@@ -1,7 +1,5 @@
 "use client";
 import Link from "next/link";
-import Sidebar from "@/components/layout/Sidebar";
-import Topbar from "@/components/layout/Topbar";
 import IntegrityGauge from "@/components/ui/IntegrityGauge";
 import StatusBadge from "@/components/ui/StatusBadge";
 import GhostButton from "@/components/ui/GhostButton";
@@ -20,10 +18,6 @@ export default function PostSessionReportPage() {
   const getStatus = (s: number) => s > 65 ? "secure" as const : s >= 35 ? "suspicious" as const : "breach" as const;
 
   return (
-    <div className="min-h-screen bg-bg-base">
-      <Sidebar variant="proctor" />
-      <div className="ml-[220px]">
-        <Topbar variant="proctor" />
         <main className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -104,7 +98,5 @@ export default function PostSessionReportPage() {
             </div>
           </div>
         </main>
-      </div>
-    </div>
   );
 }
