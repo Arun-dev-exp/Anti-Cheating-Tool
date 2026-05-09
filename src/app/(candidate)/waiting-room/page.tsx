@@ -1,77 +1,177 @@
 "use client";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CameraPreview from "@/components/features/CameraPreview";
 
 export default function WaitingRoomPage() {
   const router = useRouter();
+  const [elapsed, setElapsed] = useState(0);
+  const [dots, setDots] = useState("");
+
+  useEffect(() => {
+    const t = setInterval(() => setElapsed((p) => p + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    const t = setInterval(() => setDots((p) => (p.length >= 3 ? "" : p + ".")), 600);
+    return () => clearInterval(t);
+  }, []);
+
+  const fmt = (s: number) =>
+    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+
+  const checks = [
+    { label: "Camera", icon: "videocam", ok: true },
+    { label: "Microphone", icon: "mic", ok: true },
+    { label: "Identity", icon: "face", ok: true },
+    { label: "Calibration", icon: "visibility", ok: true },
+  ];
 
   return (
     <div className="min-h-screen bg-bg-base flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="auth-glow" />
+      {/* Background grid */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.02]"
+        style={{ backgroundImage: "radial-gradient(circle, #3B82F6 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
 
-      <div className="glass-card w-full max-w-[520px] p-10 relative z-10 animate-fade-in text-center">
-        {/* Logotype */}
-        <div className="font-brand tracking-[0.3em] mb-6" style={{ fontSize: "28px", fontWeight: 700 }}>
-          <span className="text-white">SENTINEL</span>{" "}
-          <span className="text-accent-blue">ZERO</span>
-        </div>
+      {/* Radial glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] pointer-events-none"
+        style={{ background: "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)", animation: "pulseGlow 6s infinite alternate" }} />
 
-        {/* Status */}
-        <div className="mb-6">
-          <span className="section-header block mb-3">WAITING FOR SESSION TO BEGIN</span>
-          <p className="text-sm text-text-secondary">
-            Your proctor will start the session shortly. Please remain on this page.
-          </p>
-        </div>
+      {/* Orbital ring */}
+      <div className="absolute top-1/2 left-1/2 w-[550px] h-[550px] -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-[0.04]"
+        style={{ border: "1px solid #3B82F6", borderRadius: "50%", animation: "orbitSpin 30s linear infinite" }} />
 
-        {/* Animated Dots */}
-        <div className="flex justify-center gap-2 mb-8">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className="w-3 h-3 rounded-full bg-accent-blue"
-              style={{
-                animation: "dotPulse 1.5s ease-in-out infinite",
-                animationDelay: `${i * 0.3}s`,
-              }}
-            />
-          ))}
-        </div>
+      {/* Main card */}
+      <div className="relative z-10 w-full max-w-[580px]" style={{ animation: "scaleIn 0.5s ease forwards" }}>
+        <div className="absolute -inset-1 rounded-[22px] opacity-30 blur-xl pointer-events-none"
+          style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(6,182,212,0.08))" }} />
 
-        {/* Session Info */}
-        <div className="glass-panel p-4 mb-6 text-left">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-xs text-text-secondary uppercase tracking-wider block mb-1">Session Code</span>
-              <span className="font-mono text-accent-blue text-lg">SZ-8821</span>
+        <div className="relative bg-bg-panel/90 border border-border-subtle rounded-[20px] overflow-hidden"
+          style={{ backdropFilter: "blur(20px)", boxShadow: "0 25px 80px rgba(0,0,0,0.4), 0 0 40px rgba(59,130,246,0.06)" }}>
+
+          {/* Top status bar */}
+          <div className="flex items-center justify-between px-6 py-3 border-b border-border-subtle bg-bg-surface/40">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[16px] text-accent-blue">hourglass_top</span>
+              <span className="font-mono text-[11px] text-text-secondary uppercase tracking-wider">Waiting Room</span>
             </div>
-            <div>
-              <span className="text-xs text-text-secondary uppercase tracking-wider block mb-1">Duration</span>
-              <span className="font-mono text-text-primary text-lg">120 min</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" style={{ animation: "dotPulse 1.5s infinite" }} />
+                <span className="text-[10px] text-amber-400 font-mono font-medium">PENDING</span>
+              </div>
+              <span className="text-[11px] text-text-mono font-mono">{fmt(elapsed)}</span>
             </div>
-            <div>
-              <span className="text-xs text-text-secondary uppercase tracking-wider block mb-1">Session</span>
-              <span className="text-sm text-text-primary">Technical Interview</span>
+          </div>
+
+          <div className="p-6 md:p-8">
+            {/* Animated waiting indicator */}
+            <div className="flex justify-center mb-6">
+              <div className="relative">
+                {/* Pulsing rings */}
+                <div className="absolute inset-0 rounded-full" style={{ border: "2px solid rgba(59,130,246,0.15)", animation: "calibPulse 2s ease-out infinite" }} />
+                <div className="absolute inset-0 rounded-full" style={{ border: "2px solid rgba(59,130,246,0.1)", animation: "calibPulse 2s 0.6s ease-out infinite" }} />
+                <div className="w-20 h-20 rounded-full flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(6,182,212,0.08))", border: "1px solid rgba(59,130,246,0.2)" }}>
+                  <span className="material-symbols-outlined text-[32px] text-accent-blue">schedule</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <span className="text-xs text-text-secondary uppercase tracking-wider block mb-1">Proctor</span>
-              <span className="text-sm text-text-primary">Dr. Priya Mehta</span>
+
+            {/* Heading */}
+            <div className="text-center mb-6">
+              <h1 className="font-ui text-[22px] font-semibold text-text-primary mb-1.5">
+                Waiting for Session{dots}
+              </h1>
+              <p className="text-text-secondary text-[13px] leading-relaxed max-w-[360px] mx-auto">
+                Your proctor will start the exam shortly. Please stay on this page and keep your camera active.
+              </p>
+            </div>
+
+            {/* Session info card */}
+            <div className="rounded-2xl border border-border-subtle bg-bg-surface/30 overflow-hidden mb-6"
+              style={{ backdropFilter: "blur(8px)" }}>
+              {/* Session header */}
+              <div className="px-5 py-3 border-b border-border-subtle/50 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px] text-accent-cyan">assignment</span>
+                <span className="text-[12px] font-semibold text-text-primary uppercase tracking-wider">Session Details</span>
+              </div>
+              <div className="p-5">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  {[
+                    { label: "Session Code", value: "SZ-8821", color: "#3B82F6", mono: true, icon: "tag" },
+                    { label: "Duration", value: "120 min", color: "#06B6D4", mono: true, icon: "timer" },
+                    { label: "Exam Type", value: "Technical Interview", color: "", mono: false, icon: "quiz" },
+                    { label: "Proctor", value: "Dr. Priya Mehta", color: "", mono: false, icon: "person" },
+                  ].map((item, i) => (
+                    <div key={i} className="flex items-start gap-2.5">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ background: "rgba(26,26,62,0.6)", border: "1px solid rgba(45,45,107,0.5)" }}>
+                        <span className="material-symbols-outlined text-[14px] text-text-secondary">{item.icon}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-text-secondary uppercase tracking-wider font-mono block mb-0.5">{item.label}</span>
+                        <span className={`text-[14px] font-medium ${item.mono ? "font-mono" : "font-ui"}`}
+                          style={{ color: item.color || "var(--color-text-primary)" }}>{item.value}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Pre-flight checks */}
+            <div className="flex items-center justify-center gap-3 mb-6">
+              {checks.map((c, i) => (
+                <div key={i} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
+                  style={{ background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.15)" }}>
+                  <span className="material-symbols-outlined text-[14px] text-status-secure">{c.icon}</span>
+                  <span className="text-[11px] text-status-secure font-medium">{c.label}</span>
+                  <span className="material-symbols-outlined text-[12px] text-status-secure">check</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Camera preview */}
+            <div className="flex justify-center">
+              <div className="relative">
+                <div className="absolute -inset-0.5 rounded-xl opacity-30 blur-md pointer-events-none"
+                  style={{ background: "linear-gradient(135deg, rgba(59,130,246,0.2), rgba(6,182,212,0.15))" }} />
+                <CameraPreview width={220} height={140} label="YOUR CAMERA" className="relative" />
+              </div>
+            </div>
+
+            {/* Dev shortcut */}
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={() => router.push("/session")}
+                className="text-[11px] text-text-secondary/40 hover:text-accent-blue/70 transition-colors font-mono flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[12px]">code</span>
+                [DEV] Skip →
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom bar */}
+          <div className="flex items-center justify-between px-6 py-2.5 border-t border-border-subtle bg-bg-surface/30">
+            <div className="flex items-center gap-4 text-[10px] text-text-secondary/60 font-mono">
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-[12px] text-status-secure">lock</span>
+                E2E ENCRYPTED
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="material-symbols-outlined text-[12px] text-accent-cyan">memory</span>
+                ON-DEVICE
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[12px] text-status-secure">wifi</span>
+              <span className="text-[10px] text-status-secure font-mono">CONNECTED</span>
             </div>
           </div>
         </div>
-
-        {/* Camera Preview (corner) */}
-        <div className="flex justify-center">
-          <CameraPreview width={200} height={130} label="YOUR CAMERA" />
-        </div>
-
-        {/* Dev shortcut */}
-        <button
-          onClick={() => router.push("/liveness")}
-          className="mt-6 text-xs text-text-secondary hover:text-accent-blue transition-colors font-mono"
-        >
-          [DEV] Skip to Liveness →
-        </button>
       </div>
     </div>
   );

@@ -25,7 +25,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full bg-bg-base text-text-primary font-ui antialiased">
+      <body className="min-h-full bg-bg-base text-text-primary font-ui antialiased" suppressHydrationWarning>
         {children}
       </body>
     </html>

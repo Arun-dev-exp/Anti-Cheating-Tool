@@ -1,6 +1,4 @@
 "use client";
-import Sidebar from "@/components/layout/Sidebar";
-import Topbar from "@/components/layout/Topbar";
 import IntegrityGauge from "@/components/ui/IntegrityGauge";
 import RiskBar from "@/components/ui/RiskBar";
 import SignalCard from "@/components/ui/SignalCard";
@@ -22,10 +20,6 @@ export default function MonitorViewPage() {
   const events = generateMockEvents(12);
 
   return (
-    <div className="min-h-screen bg-bg-base">
-      <Sidebar variant="proctor" />
-      <div className="ml-[220px]">
-        <Topbar variant="proctor" />
         <main className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -63,7 +57,5 @@ export default function MonitorViewPage() {
             </div>
           </div>
         </main>
-      </div>
-    </div>
   );
 }
