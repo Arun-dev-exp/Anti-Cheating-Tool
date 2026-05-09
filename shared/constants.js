@@ -5,6 +5,12 @@
 const KEYSTROKE_WINDOW_SIZE = 20;       // Number of keystrokes per analysis window
 const ENTROPY_FLAG_MS = 5;              // Variance threshold (ms²) — below this = suspicious
 
+// ─── Gaze (DEV2) ────────────────────────────────────────────────
+const GAZE_OFFSCREEN_THRESHOLD_MS = 3000; // 3 seconds off-screen = flag
+
+// ─── Liveness (DEV2) ────────────────────────────────────────────
+const LIVENESS_CHECK_INTERVAL_MS = 10000; // Check every 10 seconds
+
 // ─── Process Scanning (DEV3) ────────────────────────────────────
 const PROCESS_SCAN_INTERVAL_MS = 30000; // 30 seconds
 
@@ -44,6 +50,8 @@ const EVENTS = {
 module.exports = {
   KEYSTROKE_WINDOW_SIZE,
   ENTROPY_FLAG_MS,
+  GAZE_OFFSCREEN_THRESHOLD_MS,
+  LIVENESS_CHECK_INTERVAL_MS,
   PROCESS_SCAN_INTERVAL_MS,
   BREACH_THRESHOLD,
   AMBER_THRESHOLD,

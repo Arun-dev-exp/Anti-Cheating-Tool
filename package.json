@@ -2,13 +2,14 @@
   "name": "sentinel-zero",
   "version": "1.0.0",
   "description": "Sentinel Zero — AI-powered exam integrity system",
-  "main": "index.js",
+  "main": "main.js",
   "scripts": {
     "test": "node tests/test_detection.js",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "electron:dev": "electron ."
   },
   "keywords": [],
   "author": "",
