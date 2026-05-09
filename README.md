@@ -1,6 +1,6 @@
 # Sentinel Zero — Anti-Cheating Tool
 
-> AI-powered exam integrity system built with Electron.
+> AI-powered exam integrity system built with Electron and Next.js.
 
 ## DEV1 — Detection Engine
 
@@ -47,3 +47,21 @@ node tests/test_detection.js
 | Gaze tracking | DEV2 |
 | Process scanning | DEV3 |
 | UI + Electron shell | DEV4 |
+
+## Next.js Frontend Details
+
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+First, run the development server:
+
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

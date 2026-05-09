@@ -1,0 +1,529 @@
+@import "tailwindcss";
+
+/* === TAILWIND V4 THEME TOKENS === */
+@theme inline {
+  /* === COLORS: BACKGROUNDS === */
+  --color-bg-base: #04040F;
+  --color-bg-surface: #0A0A1E;
+  --color-bg-panel: #0F0F2A;
+  --color-bg-topbar: rgba(10, 10, 30, 0.95);
+
+  /* === COLORS: BORDERS === */
+  --color-border-subtle: #1A1A3E;
+  --color-border-active: #2D2D6B;
+
+  /* === COLORS: TEXT === */
+  --color-text-primary: #F1F5F9;
+  --color-text-secondary: #94A3B8;
+  --color-text-mono: #7DD3FC;
+
+  /* === COLORS: ACCENT === */
+  --color-accent-blue: #3B82F6;
+  --color-accent-cyan: #06B6D4;
+
+  /* === COLORS: STATUS === */
+  --color-status-secure: #22C55E;
+  --color-status-suspicious: #F59E0B;
+  --color-status-breach: #EF4444;
+
+  /* === COLORS: GLOWS === */
+  --color-glow-secure: rgba(22, 163, 74, 0.13);
+  --color-glow-suspicious: rgba(217, 119, 6, 0.13);
+  --color-glow-breach: rgba(220, 38, 38, 0.13);
+
+  /* === FONTS === */
+  --font-brand: 'Space Grotesk', sans-serif;
+  --font-ui: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* === SPACING === */
+  --spacing-sidebar: 220px;
+  --spacing-topbar: 56px;
+
+  /* === BORDER RADIUS === */
+  --radius-glass: 16px;
+  --radius-card: 10px;
+  --radius-input: 8px;
+
+  /* === BOX SHADOWS === */
+  --shadow-glass: 0 0 60px rgba(59, 130, 246, 0.08);
+  --shadow-glow-blue: 0 0 20px rgba(59, 130, 246, 0.15);
+  --shadow-glow-green: 0 0 15px rgba(34, 197, 94, 0.3);
+  --shadow-glow-red: 0 0 15px rgba(239, 68, 68, 0.3);
+  --shadow-glow-amber: 0 0 15px rgba(245, 158, 11, 0.3);
+
+  /* === ANIMATIONS === */
+  --animate-pulse-slow: pulse 4s ease-in-out infinite;
+  --animate-pulse-breach: breach-pulse 1.5s ease-in-out infinite;
+  --animate-slide-in: slideIn 200ms ease-out;
+  --animate-fade-in: fadeIn 400ms ease-out;
+  --animate-gauge-fill: gaugeFill 800ms ease-out forwards;
+
+  @keyframes breach-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes gaugeFill {
+    from { stroke-dashoffset: 283; }
+    to { stroke-dashoffset: var(--target-offset); }
+  }
+
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes radialPulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
+  }
+
+  @keyframes dotPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes pulseGlow {
+    0% { transform: translateX(-50%) scale(0.9); opacity: 0.8; }
+    100% { transform: translateX(-50%) scale(1.1); opacity: 1; }
+  }
+
+  @keyframes dashFloat {
+    0% { transform: translateY(0px); }
+    100% { transform: translateY(-10px); }
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes float1 {
+    0%,100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(2deg); }
+  }
+
+  @keyframes float2 {
+    0%,100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-15px) rotate(-2deg); }
+  }
+
+  @keyframes orbitSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  @keyframes revealUp {
+    from { opacity: 0; transform: translateY(40px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @keyframes borderGlow {
+    0%,100% { border-color: rgba(59,130,246,0.2); }
+    50% { border-color: rgba(59,130,246,0.5); }
+  }
+}
+
+/* === BASE RESET === */
+body {
+  background-color: #04040F;
+  color: #F1F5F9;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* === SCROLL REVEAL === */
+.reveal-hidden {
+  opacity: 0;
+  transform: translateY(30px);
+}
+.reveal-visible {
+  animation: revealUp 0.7s ease forwards;
+}
+
+/* === MATERIAL SYMBOLS === */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* === SCROLLBAR HIDE === */
+::-webkit-scrollbar { width: 0px; background: transparent; }
+
+/* === SELECTION === */
+::selection { background: rgba(59, 130, 246, 0.3); }
+
+/* === COMPONENT CLASSES === */
+
+/* Glass Card — centered modal-style container */
+.glass-card {
+  background: rgba(15, 15, 42, 0.85);
+  border: 1px solid #2D2D6B;
+  border-radius: 16px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 0 60px rgba(59, 130, 246, 0.08);
+}
+
+/* Glass Panel — inline card within layouts */
+.glass-panel {
+  background: #0F0F2A;
+  border: 1px solid #1A1A3E;
+  border-radius: 10px;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid;
+}
+
+.status-badge-secure {
+  background: rgba(22, 163, 74, 0.13);
+  border-color: #22C55E;
+  color: #22C55E;
+}
+
+.status-badge-suspicious {
+  background: rgba(217, 119, 6, 0.13);
+  border-color: #F59E0B;
+  color: #F59E0B;
+}
+
+.status-badge-breach {
+  background: rgba(220, 38, 38, 0.13);
+  border-color: #EF4444;
+  color: #EF4444;
+  animation: breach-pulse 1.5s ease-in-out infinite;
+}
+
+/* Gradient CTA Button */
+.btn-gradient {
+  width: 100%;
+  height: 52px;
+  background: linear-gradient(135deg, #3B82F6, #06B6D4);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+.btn-gradient:hover {
+  filter: brightness(1.1);
+}
+
+/* Ghost Button */
+.btn-ghost {
+  padding: 0 24px;
+  height: 48px;
+  background: transparent;
+  border: 1px solid #2D2D6B;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #3B82F6;
+  cursor: pointer;
+  transition: all 200ms ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-ghost:hover {
+  border-color: #3B82F6;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+/* Input Field */
+.input-field {
+  width: 100%;
+  height: 48px;
+  background: #0A0A1E;
+  border: 1px solid #1A1A3E;
+  border-radius: 8px;
+  padding: 0 16px;
+  font-size: 14px;
+  color: #F1F5F9;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: all 200ms ease;
+}
+.input-field::placeholder {
+  color: #94A3B8;
+}
+.input-field:focus {
+  border-color: #3B82F6;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+/* Section Header */
+.section-header {
+  font-size: 13px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #94A3B8;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Divider */
+.divider-gradient {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, #2D2D6B, transparent);
+}
+
+/* Log Entry */
+.log-entry {
+  height: 36px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(26, 26, 62, 0.5);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  animation: slideIn 200ms ease-out;
+}
+
+/* Signal Card */
+.signal-card {
+  background: #0F0F2A;
+  border: 1px solid #1A1A3E;
+  border-radius: 10px;
+  padding: 16px;
+  transition: all 300ms ease;
+}
+.signal-card:hover {
+  border-color: #2D2D6B;
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.15);
+}
+
+/* Radial glow background for auth pages */
+.auth-glow {
+  position: fixed;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: radialPulse 4s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* === AUTH PREMIUM COMPONENTS === */
+
+/* Auth Input Field */
+.auth-input {
+  width: 100%;
+  height: 48px;
+  background: rgba(10, 10, 30, 0.6);
+  border: 1px solid rgba(26, 26, 62, 0.7);
+  border-radius: 10px;
+  padding: 0 16px;
+  font-size: 14px;
+  color: #F1F5F9;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.auth-input::placeholder {
+  color: rgba(148, 163, 184, 0.4);
+}
+.auth-input:hover {
+  border-color: rgba(45, 45, 107, 0.9);
+  background: rgba(10, 10, 30, 0.8);
+}
+.auth-input:focus {
+  border-color: rgba(59, 130, 246, 0.6);
+  background: rgba(10, 10, 30, 0.9);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08), 0 0 20px rgba(59, 130, 246, 0.06);
+}
+
+/* Auth Primary Button */
+.auth-btn-primary {
+  position: relative;
+  width: 100%;
+  height: 52px;
+  background: linear-gradient(135deg, #3B82F6, #06B6D4);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: white;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 200ms ease;
+  font-family: 'Inter', sans-serif;
+}
+.auth-btn-primary:hover {
+  filter: brightness(1.12);
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.25), 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+}
+.auth-btn-primary:active {
+  transform: translateY(0px);
+  filter: brightness(1.05);
+}
+
+/* Shimmer overlay for primary button */
+.auth-btn-shimmer {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.08) 40%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.08) 60%,
+    transparent 100%
+  );
+  animation: authShimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Ghost Button */
+.auth-btn-ghost {
+  width: 100%;
+  height: 48px;
+  background: transparent;
+  border: 1px solid rgba(45, 45, 107, 0.6);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #3B82F6;
+  cursor: pointer;
+  transition: all 250ms ease;
+  font-family: 'Inter', sans-serif;
+}
+.auth-btn-ghost:hover {
+  border-color: #3B82F6;
+  background: rgba(59, 130, 246, 0.05);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+/* OAuth Button */
+.auth-btn-oauth {
+  width: 100%;
+  height: 48px;
+  background: rgba(15, 15, 42, 0.5);
+  border: 1px solid rgba(26, 26, 62, 0.7);
+  border-radius: 10px;
+  font-size: 13px;
+  color: #F1F5F9;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.auth-btn-oauth:hover {
+  border-color: rgba(45, 45, 107, 0.9);
+  background: rgba(15, 15, 42, 0.8);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.06);
+  transform: translateY(-1px);
+}
+
+/* Role Selector Cards */
+.auth-role-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+}
+.auth-role-active {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.06);
+  box-shadow: 0 0 24px rgba(59, 130, 246, 0.08), inset 0 1px 0 rgba(59, 130, 246, 0.1);
+}
+.auth-role-inactive {
+  border-color: rgba(26, 26, 62, 0.6);
+  background: rgba(10, 10, 30, 0.4);
+}
+.auth-role-inactive:hover {
+  border-color: rgba(45, 45, 107, 0.8);
+  background: rgba(15, 15, 42, 0.5);
+}
+
+/* === AUTH KEYFRAMES === */
+
+@keyframes authShimmer {
+  0% { left: -100%; }
+  50%, 100% { left: 100%; }
+}
+
+@keyframes authDotPulse {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.8); }
+}
+
+@keyframes authScanLine {
+  0% { top: -2%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 102%; opacity: 0; }
+}
+
+@keyframes authOrbPulse {
+  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+}
