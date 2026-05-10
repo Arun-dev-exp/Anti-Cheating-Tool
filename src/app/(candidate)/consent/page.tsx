@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import InputField from "@/components/ui/InputField";
 import GradientButton from "@/components/ui/GradientButton";
+import { useSession } from "@/context/SessionContext";
+import { joinSession } from "@/lib/sessions";
 import {
   Shield,
   Eye,
@@ -93,9 +95,11 @@ function ConsentDot({ delay, x, y }: { delay: number; x: number; y: number }) {
 
 export default function ConsentPage() {
   const router = useRouter();
+  const { sessionId, setParticipantData } = useSession();
   const [name, setName] = useState("");
   const [consented, setConsented] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [expandedModule, setExpandedModule] = useState<number | null>(null);
   const [dots, setDots] = useState<{ x: number; y: number; d: number }[]>([]);
 
@@ -109,12 +113,32 @@ export default function ConsentPage() {
     );
   }, []);
 
-  const handleConsent = (e: React.FormEvent) => {
+  const handleConsent = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      router.push("/join");
-    }, 800);
+    setError(null);
+
+    try {
+      if (!sessionId) {
+        // No session in context — go back to join
+        router.push("/join");
+        return;
+      }
+
+      // Create participant record in Supabase
+      const participant = await joinSession(sessionId, name);
+
+      // Store participant data in context
+      setParticipantData({
+        participantId: participant.id,
+        candidateName: name,
+      });
+
+      router.push("/system-check");
+    } catch {
+      setError("Failed to join session. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (

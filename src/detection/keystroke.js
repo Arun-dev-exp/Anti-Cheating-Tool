@@ -9,7 +9,20 @@
 // below ENTROPY_FLAG_MS the window is flagged.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const iohook = require('iohook');
+let uihook;
+try {
+  const { uIOhook } = require('uiohook-napi');
+  uihook = uIOhook;
+} catch (e) {
+  // uiohook-napi is a native module that requires Electron rebuild.
+  // Provide a no-op stub so the app can boot without it.
+  console.warn('[DEV1:keystroke] uiohook-napi not available — keystroke detection disabled');
+  uihook = {
+    on: () => { },
+    start: () => { },
+    stop: () => { },
+  };
+}
 const {
   ENTROPY_FLAG_MS,
   KEYSTROKE_WINDOW_SIZE,
@@ -97,7 +110,7 @@ function processWindow(now) {
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
- * Start the global keystroke listener via iohook.
+ * Start the global keystroke listener via uiohook-napi.
  *
  * On every keydown:
  *  - Records the timestamp
@@ -107,7 +120,7 @@ function processWindow(now) {
  * entries after each analysis, so the next analysis fires after 10 more keys.
  */
 function startKeystrokeListener() {
-  iohook.on('keydown', (_event) => {
+  uihook.on('keydown', (_event) => {
     const now = Date.now();
     timestamps.push(now);
 
@@ -116,7 +129,7 @@ function startKeystrokeListener() {
     }
   });
 
-  iohook.start();
+  uihook.start();
   console.log('[DEV1:keystroke] Keystroke entropy listener active');
 }
 
@@ -125,7 +138,7 @@ function startKeystrokeListener() {
  * Useful for clean shutdown.
  */
 function stopKeystrokeListener() {
-  iohook.stop();
+  uihook.stop();
   timestamps = [];
   console.log('[DEV1:keystroke] Keystroke listener stopped');
 }

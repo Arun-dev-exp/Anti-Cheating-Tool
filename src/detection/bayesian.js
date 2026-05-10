@@ -121,11 +121,10 @@ function applySignal(type, flagged) {
 
   if (flagged) {
     // ── Penalty Path ──────────────────────────────────────────────────────
-    // Only penalise if 2+ signals are active (Bayesian two-signal rule)
-    if (countActiveFlags() >= 2) {
+    // Bypass the two-signal rule for Network and Process since they are deterministic
+    if (countActiveFlags() >= 2 || type === 'network' || type === 'process') {
       score = Math.max(0, score - PENALTIES[type]);
     }
-    // Single flag: recorded but no penalty applied. This is intentional.
   } else {
     // ── Recovery Path ─────────────────────────────────────────────────────
     score = Math.min(100, score + RECOVERIES[type]);

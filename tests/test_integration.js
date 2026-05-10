@@ -4,9 +4,9 @@
 
 const Module = require('module');
 const originalResolveFilename = Module._resolveFilename;
-const mockIohookPath = require.resolve('./mocks/iohook');
+const mockUiohookPath = require.resolve('./mocks/uiohook-napi');
 Module._resolveFilename = function (request, parent, isMain, options) {
-  if (request === 'iohook') return mockIohookPath;
+  if (request === 'uiohook-napi') return mockUiohookPath;
   if (request === 'electron') return require.resolve('./mocks/electron');
   return originalResolveFilename.call(this, request, parent, isMain, options);
 };

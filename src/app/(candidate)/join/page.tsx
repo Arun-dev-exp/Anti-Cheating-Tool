@@ -2,15 +2,22 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import GradientButton from "@/components/ui/GradientButton";
+import { useSession } from "@/context/SessionContext";
+import { getSessionByCode } from "@/lib/sessions";
 
 export default function JoinPage() {
   const router = useRouter();
+  const { setSessionData } = useSession();
   const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(0);
+  const [isElectron, setIsElectron] = useState<boolean | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
+    // Detect if running inside Electron (sentinelBridge exposed by preload.js)
+    setIsElectron(!!(window as any).sentinelBridge);
     inputRefs.current[0]?.focus();
   }, []);
 
@@ -20,6 +27,7 @@ export default function JoinPage() {
     const next = [...code];
     next[index] = char;
     setCode(next);
+    setError(null);
     if (char && index < 5) {
       inputRefs.current[index + 1]?.focus();
       setFocused(index + 1);
@@ -47,11 +55,41 @@ export default function JoinPage() {
   const fullCode = code.join("");
   const isReady = fullCode.length === 6;
 
-  const handleJoin = (e: React.FormEvent) => {
+  const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isReady) return;
     setLoading(true);
-    setTimeout(() => router.push("/system-check"), 800);
+    setError(null);
+
+    try {
+      const session = await getSessionByCode(fullCode);
+      
+      if (!session) {
+        setError("Invalid session code. Please check and try again.");
+        setLoading(false);
+        return;
+      }
+
+      if (session.status === "ended") {
+        setError("This session has already ended.");
+        setLoading(false);
+        return;
+      }
+
+      // Store session data in context for downstream pages
+      setSessionData({
+        sessionId: session.id,
+        sessionCode: session.code,
+        sessionTitle: session.title,
+        interviewerName: session.interviewer_name,
+        durationMinutes: session.duration_minutes,
+      });
+
+      router.push("/consent");
+    } catch {
+      setError("Connection error. Please try again.");
+      setLoading(false);
+    }
   };
 
   return (
@@ -69,6 +107,17 @@ export default function JoinPage() {
       {/* Radial glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] pointer-events-none"
         style={{ background: "radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)", animation: "pulseGlow 6s infinite alternate" }} />
+
+      {/* Electron-only warning */}
+      {isElectron === false && (
+        <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-center gap-2"
+          style={{ background: "linear-gradient(90deg, rgba(245,158,11,0.15), rgba(239,68,68,0.1))", borderBottom: "1px solid rgba(245,158,11,0.3)", backdropFilter: "blur(12px)" }}>
+          <span className="material-symbols-outlined text-status-suspicious" style={{ fontSize: "18px" }}>warning</span>
+          <span className="text-[12px] text-status-suspicious font-mono">
+            BROWSER MODE — Keystroke, Process & Network monitoring unavailable. Use the <strong>Sentinel Zero Desktop App</strong> for full integrity monitoring.
+          </span>
+        </div>
+      )}
 
       {/* Main card */}
       <div className="relative z-10 w-full max-w-[520px]" style={{ animation: "scaleIn 0.5s ease forwards" }}>
@@ -104,9 +153,9 @@ export default function JoinPage() {
 
           {/* Title */}
           <div className="text-center mb-8">
-            <h1 className="font-ui text-[24px] font-semibold text-text-primary mb-2">Join Exam Session</h1>
+            <h1 className="font-ui text-[24px] font-semibold text-text-primary mb-2">Join Session</h1>
             <p className="text-text-secondary text-[14px] leading-relaxed">
-              Enter the 6-character code provided by your proctor
+              Enter the 6-character code provided by your interviewer
             </p>
           </div>
 
@@ -133,7 +182,7 @@ export default function JoinPage() {
                       onFocus={() => setFocused(i)}
                       className="w-[56px] h-[64px] text-center font-mono text-[24px] font-bold rounded-xl border-2 outline-none transition-all duration-300 bg-bg-surface text-text-primary"
                       style={{
-                        borderColor: focused === i ? "#3B82F6" : char ? "rgba(59,130,246,0.3)" : "rgba(26,26,62,0.8)",
+                        borderColor: error ? "#EF4444" : focused === i ? "#3B82F6" : char ? "rgba(59,130,246,0.3)" : "rgba(26,26,62,0.8)",
                         boxShadow: focused === i ? "0 0 20px rgba(59,130,246,0.15), inset 0 0 20px rgba(59,130,246,0.05)" : char ? "0 0 10px rgba(59,130,246,0.05)" : "none",
                       }}
                       maxLength={1}
@@ -147,13 +196,24 @@ export default function JoinPage() {
                   </div>
                 ))}
               </div>
+
+              {/* Error message */}
+              {error && (
+                <div className="flex items-center justify-center gap-2 mt-4 px-4 py-2.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                  <span className="material-symbols-outlined text-[16px] text-red-400">error</span>
+                  <span className="text-[12px] text-red-400 font-medium">{error}</span>
+                </div>
+              )}
+
               {/* Progress dots */}
-              <div className="flex justify-center gap-1.5 mt-4">
-                {code.map((char, i) => (
-                  <div key={i} className="w-1.5 h-1.5 rounded-full transition-all duration-300"
-                    style={{ backgroundColor: char ? "#3B82F6" : "rgba(26,26,62,0.8)" }} />
-                ))}
-              </div>
+              {!error && (
+                <div className="flex justify-center gap-1.5 mt-4">
+                  {code.map((char, i) => (
+                    <div key={i} className="w-1.5 h-1.5 rounded-full transition-all duration-300"
+                      style={{ backgroundColor: char ? "#3B82F6" : "rgba(26,26,62,0.8)" }} />
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Join button */}
@@ -161,7 +221,7 @@ export default function JoinPage() {
               {loading ? (
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                  CONNECTING...
+                  VERIFYING CODE...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">

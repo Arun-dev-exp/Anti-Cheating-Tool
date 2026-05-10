@@ -23,6 +23,7 @@ const monitoringToggles: ToggleItem[] = [
   { label: "Gaze Tracking", desc: "Monitor eye movement and focus direction", icon: "visibility", key: "gaze", defaultValue: true },
   { label: "Process Monitoring", desc: "Detect unauthorized apps and tab switches", icon: "memory", key: "process", defaultValue: true },
   { label: "Liveness Detection", desc: "Real-time face presence verification", icon: "face", key: "liveness", defaultValue: true },
+  { label: "Network Monitor", desc: "Detect outbound requests to AI APIs (ChatGPT, Claude, Gemini)", icon: "wifi_tethering", key: "network", defaultValue: true },
 ];
 
 const monitoringSelects: SelectItem[] = [
@@ -161,7 +162,7 @@ export default function SettingsPage() {
                 <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider font-mono">Monitoring Modules</span>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-accent-blue/10 text-accent-blue border border-accent-blue/20">
-                {enabledModulesCount}/4 ACTIVE
+                {enabledModulesCount}/{monitoringToggles.length} ACTIVE
               </span>
             </div>
             <div className="divide-y divide-border-subtle/15">

@@ -105,6 +105,7 @@ class NetworkScanner extends EventEmitter {
 
       if (activeIPs.size === 0) return;
 
+      // 1. IP Check via Netstat
       for (const [domain, ips] of this._resolvedIPs.entries()) {
         for (const ip of ips) {
           if (activeIPs.has(ip)) {
@@ -116,6 +117,31 @@ class NetworkScanner extends EventEmitter {
             return; // One match per scan cycle is enough
           }
         }
+      }
+
+      // 2. Window Title Check via PowerShell (Catches CDN-backed AI sites in browser tabs)
+      if (process.platform === 'win32') {
+        const psCmd = 'powershell "Get-Process | Where-Object MainWindowTitle | Select-Object Name, MainWindowTitle"';
+        exec(psCmd, { timeout: 10000 }, (err, stdout) => {
+          if (!err && stdout) {
+            for (const domain of NETWORK_BLOCKLIST) {
+              // Extract the base name (e.g., "claude.ai" -> "claude", "chatgpt.com" -> "chatgpt")
+              let baseName = domain.split('.')[0];
+              if (baseName === 'api' || baseName === 'chat') {
+                baseName = domain.split('.')[1]; // fallback for api.openai.com
+              }
+              
+              if (stdout.toLowerCase().includes(baseName.toLowerCase())) {
+                this.emit('ai-request-detected', {
+                  domain: `Browser tab: ${domain}`,
+                  ip: 'local',
+                  ts: Date.now(),
+                });
+                return;
+              }
+            }
+          }
+        });
       }
     } catch (err) {
       // Silent fail — never crash the session

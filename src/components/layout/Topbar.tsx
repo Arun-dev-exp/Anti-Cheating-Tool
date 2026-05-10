@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import StatusBadge from "@/components/ui/StatusBadge";
+import { useAuth } from "@/context/AuthContext";
 
 interface TopbarProps {
   candidateName?: string;
@@ -11,12 +12,16 @@ interface TopbarProps {
 }
 
 export default function Topbar({
-  candidateName = "ARJUN SHARMA",
-  timer = "01:24:36",
+  candidateName = "",
+  timer = "--:--:--",
   status = "secure",
   variant = "candidate",
 }: TopbarProps) {
   const pathname = usePathname();
+  const { user } = useAuth();
+  const initials = user?.user_metadata?.full_name
+    ? user.user_metadata.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+    : "--";
 
   return (
     <header
@@ -25,7 +30,7 @@ export default function Topbar({
     >
       {/* Left: Session context */}
       <div className="flex items-center gap-4">
-        {variant === "candidate" && (
+        {variant === "candidate" && candidateName && (
           <>
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-lg bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center">
@@ -35,7 +40,6 @@ export default function Topbar({
                 <span className="text-[11px] text-text-primary font-medium font-ui leading-tight">
                   {candidateName}
                 </span>
-                <span className="text-[9px] text-text-secondary/60 font-mono">SZ-8821</span>
               </div>
             </div>
             <div className="w-px h-7 bg-border-subtle" />
@@ -66,7 +70,7 @@ export default function Topbar({
           <span className="material-symbols-outlined text-[16px] text-text-secondary">notifications</span>
         </button>
         <div className="w-8 h-8 rounded-lg bg-accent-blue/10 border border-accent-blue/20 flex items-center justify-center">
-          <span className="text-[11px] text-accent-blue font-semibold font-mono">AS</span>
+          <span className="text-[11px] text-accent-blue font-semibold font-mono">{initials}</span>
         </div>
       </div>
     </header>
