@@ -22,7 +22,8 @@ contextBridge.exposeInMainWorld('sentinelBridge', {
       'signal:keystroke',
       'signal:score-update',
       'signal:breach',
-      'signal:process'
+      'signal:process',
+      'signal:network'
     ];
     if (validChannels.includes(channel)) {
       // Strip event as it includes `sender`

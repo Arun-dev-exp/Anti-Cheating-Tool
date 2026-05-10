@@ -8,6 +8,7 @@ import {
   Eye,
   Keyboard,
   Monitor,
+  Wifi,
   ArrowRight,
   Loader2,
   Lock,
@@ -47,6 +48,14 @@ const monitoringModules = [
     desc: "Continuous face presence verification",
     badge: "LOCAL ONLY",
     color: "#22C55E",
+  },
+  {
+    icon: <Wifi size={20} />,
+    matIcon: "language",
+    title: "Network Activity",
+    desc: "Detects requests to AI APIs. No browsing history is recorded.",
+    badge: "LOCAL ONLY",
+    color: "#F97316",
   },
 ];
 

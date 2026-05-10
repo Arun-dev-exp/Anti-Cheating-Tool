@@ -17,6 +17,7 @@ const moduleIcons: Record<string, string> = {
   gaze: "visibility",
   process: "memory",
   liveness: "face",
+  network: "language",
 };
 
 export default function SignalCard({ data, className = "" }: SignalCardProps) {

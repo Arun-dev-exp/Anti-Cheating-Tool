@@ -30,6 +30,7 @@ let activeFlags = {
   gaze: false,
   process: false,
   liveness: false,
+  network: false,
 };
 
 // ─── Penalty / Recovery Tables ──────────────────────────────────────────────
@@ -40,6 +41,7 @@ const PENALTIES = {
   gaze: 15,
   process: 20,
   liveness: 25,
+  network: 22,
 };
 
 const RECOVERIES = {
@@ -47,6 +49,7 @@ const RECOVERIES = {
   gaze: 2,
   process: 1,
   liveness: 2,
+  network: 1,
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -173,6 +176,7 @@ function reset() {
     gaze: false,
     process: false,
     liveness: false,
+    network: false,
   };
   console.log('[DEV1:bayesian] Risk engine reset');
 }

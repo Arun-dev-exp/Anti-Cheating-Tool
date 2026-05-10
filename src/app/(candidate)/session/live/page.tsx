@@ -106,8 +106,8 @@ export default function LiveDashboardPage() {
             <StatusBadge status={status} />
           </div>
 
-          {/* Signal Cards — 4 columns */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          {/* Signal Cards — 5 columns */}
+          <div className="grid grid-cols-5 gap-4 mb-6">
             {signals.map((signal) => (
               <SignalCard key={signal.module} data={signal} />
             ))}

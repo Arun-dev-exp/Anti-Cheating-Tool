@@ -56,10 +56,11 @@ export interface RiskFactors {
   gaze: number;
   process: number;
   liveness: number;
+  network: number;
 }
 
 // === MONITORING MODULE ===
-export type MonitoringModule = "keystroke" | "gaze" | "process" | "liveness";
+export type MonitoringModule = "keystroke" | "gaze" | "process" | "liveness" | "network";
 
 // === INTEGRITY STATE ===
 export type IntegrityState = "secure" | "suspicious" | "breach";

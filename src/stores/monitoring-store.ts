@@ -20,6 +20,7 @@ const secureSignals: SignalData[] = [
   { module: "gaze", icon: "👁", value: "97", unit: "%", state: "NORMAL", readings: [95, 96, 97, 96, 98, 97, 97, 96, 97, 97] },
   { module: "process", icon: "⚙", value: "3", unit: "active", state: "NORMAL", readings: [3, 3, 3, 3, 3, 3, 3, 3, 3, 3] },
   { module: "liveness", icon: "🔲", value: "99", unit: "%", state: "NORMAL", readings: [98, 99, 99, 99, 98, 99, 99, 99, 99, 99] },
+  { module: "network", icon: "🌐", value: "0", unit: "flags", state: "NORMAL", readings: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
 ];
 
 const suspiciousSignals: SignalData[] = [
@@ -27,6 +28,7 @@ const suspiciousSignals: SignalData[] = [
   { module: "gaze", icon: "👁", value: "73", unit: "%", state: "ELEVATED", readings: [97, 95, 88, 82, 76, 73, 75, 72, 74, 73] },
   { module: "process", icon: "⚙", value: "7", unit: "active", state: "ELEVATED", readings: [3, 3, 4, 5, 5, 6, 7, 7, 7, 7] },
   { module: "liveness", icon: "🔲", value: "91", unit: "%", state: "NORMAL", readings: [99, 98, 97, 95, 93, 92, 91, 91, 92, 91] },
+  { module: "network", icon: "🌐", value: "2", unit: "flags", state: "ELEVATED", readings: [0, 0, 0, 1, 1, 1, 2, 2, 2, 2] },
 ];
 
 const breachSignals: SignalData[] = [
@@ -34,11 +36,12 @@ const breachSignals: SignalData[] = [
   { module: "gaze", icon: "👁", value: "31", unit: "%", state: "FLAGGED", readings: [73, 60, 50, 42, 38, 35, 33, 32, 31, 31] },
   { module: "process", icon: "⚙", value: "12", unit: "active", state: "FLAGGED", readings: [7, 8, 9, 10, 10, 11, 11, 12, 12, 12] },
   { module: "liveness", icon: "🔲", value: "45", unit: "%", state: "FLAGGED", readings: [91, 85, 78, 70, 60, 55, 50, 48, 46, 45] },
+  { module: "network", icon: "🌐", value: "8", unit: "flags", state: "FLAGGED", readings: [2, 3, 4, 5, 6, 6, 7, 7, 8, 8] },
 ];
 
 export const useMonitoringStore = create<MonitoringState>((set) => ({
   integrityScore: 92,
-  riskFactors: { keystroke: 8, gaze: 12, process: 5, liveness: 3 },
+  riskFactors: { keystroke: 8, gaze: 12, process: 5, liveness: 3, network: 0 },
   events: generateMockEvents(15),
   signals: secureSignals,
   breachOverlayVisible: false,
@@ -53,7 +56,7 @@ export const useMonitoringStore = create<MonitoringState>((set) => ({
       case "secure":
         set({
           integrityScore: 92,
-          riskFactors: { keystroke: 8, gaze: 12, process: 5, liveness: 3 },
+          riskFactors: { keystroke: 8, gaze: 12, process: 5, liveness: 3, network: 0 },
           signals: secureSignals,
           breachOverlayVisible: false,
         });
@@ -61,7 +64,7 @@ export const useMonitoringStore = create<MonitoringState>((set) => ({
       case "suspicious":
         set({
           integrityScore: 54,
-          riskFactors: { keystroke: 35, gaze: 42, process: 28, liveness: 15 },
+          riskFactors: { keystroke: 35, gaze: 42, process: 28, liveness: 15, network: 18 },
           signals: suspiciousSignals,
           breachOverlayVisible: false,
         });
@@ -69,7 +72,7 @@ export const useMonitoringStore = create<MonitoringState>((set) => ({
       case "breach":
         set({
           integrityScore: 21,
-          riskFactors: { keystroke: 72, gaze: 85, process: 65, liveness: 55 },
+          riskFactors: { keystroke: 72, gaze: 85, process: 65, liveness: 55, network: 44 },
           signals: breachSignals,
           breachOverlayVisible: true,
         });
