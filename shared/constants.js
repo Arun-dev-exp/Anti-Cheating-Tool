@@ -14,6 +14,21 @@ const LIVENESS_CHECK_INTERVAL_MS = 10000; // Check every 10 seconds
 // ─── Process Scanning (DEV3) ────────────────────────────────────
 const PROCESS_SCAN_INTERVAL_MS = 30000; // 30 seconds
 
+// ─── Network Monitoring (DEV5) ──────────────────────────────────
+const NETWORK_SCAN_INTERVAL_MS = 15000; // 15 seconds
+const NETWORK_BLOCKLIST = [
+  'api.openai.com',
+  'api.anthropic.com',
+  'generativelanguage.googleapis.com',
+  'openrouter.ai',
+  'api.groq.com',
+  'api.mistral.ai',
+  'api.cohere.com',
+  'chat.openai.com',
+  'claude.ai',
+  'copilot.microsoft.com',
+];
+
 // ─── Scoring Thresholds ─────────────────────────────────────────
 const BREACH_THRESHOLD = 35;            // Score at or below = RED (breach)
 const AMBER_THRESHOLD = 60;             // Score at or below = AMBER (warning)
@@ -24,12 +39,14 @@ const WEIGHT_KEYSTROKE = 18;
 const WEIGHT_GAZE = 15;
 const WEIGHT_PROCESS = 20;
 const WEIGHT_LIVENESS = 25;
+const WEIGHT_NETWORK = 22;
 
 // ─── Recovery Rates (per unflagged tick) ────────────────────────
 const RECOVERY_KEYSTROKE = 3;
 const RECOVERY_GAZE = 2;
 const RECOVERY_PROCESS = 1;
 const RECOVERY_LIVENESS = 2;
+const RECOVERY_NETWORK = 1;
 
 // ─── IPC Event Names ────────────────────────────────────────────
 const EVENTS = {
@@ -42,6 +59,7 @@ const EVENTS = {
   PROCESS: 'signal:process',
   LIVENESS: 'signal:liveness',
   DETECTION: 'signal:detection',
+  NETWORK: 'signal:network',
   // Score
   SCORE_UPDATE: 'signal:score-update',
   BREACH: 'signal:breach',
@@ -53,6 +71,8 @@ module.exports = {
   GAZE_OFFSCREEN_THRESHOLD_MS,
   LIVENESS_CHECK_INTERVAL_MS,
   PROCESS_SCAN_INTERVAL_MS,
+  NETWORK_SCAN_INTERVAL_MS,
+  NETWORK_BLOCKLIST,
   BREACH_THRESHOLD,
   AMBER_THRESHOLD,
   INITIAL_SCORE,
@@ -60,9 +80,11 @@ module.exports = {
   WEIGHT_GAZE,
   WEIGHT_PROCESS,
   WEIGHT_LIVENESS,
+  WEIGHT_NETWORK,
   RECOVERY_KEYSTROKE,
   RECOVERY_GAZE,
   RECOVERY_PROCESS,
   RECOVERY_LIVENESS,
+  RECOVERY_NETWORK,
   EVENTS,
 };

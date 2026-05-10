@@ -15,7 +15,9 @@ const fs = require('fs');
 const path = require('path');
 const { EVENTS, BREACH_THRESHOLD, INITIAL_SCORE, AMBER_THRESHOLD,
   KEYSTROKE_WINDOW_SIZE, ENTROPY_FLAG_MS, GAZE_OFFSCREEN_THRESHOLD_MS,
-  PROCESS_SCAN_INTERVAL_MS, LIVENESS_CHECK_INTERVAL_MS } = require('../shared/constants');
+  PROCESS_SCAN_INTERVAL_MS, LIVENESS_CHECK_INTERVAL_MS,
+  NETWORK_SCAN_INTERVAL_MS, NETWORK_BLOCKLIST,
+  WEIGHT_NETWORK, RECOVERY_NETWORK } = require('../shared/constants');
 
 let passed = 0, failed = 0;
 function assert(cond, name) {
@@ -40,7 +42,7 @@ assert(LIVENESS_CHECK_INTERVAL_MS === 10000, `LIVENESS_CHECK_INTERVAL = 10000ms 
 
 // All IPC event names must exist
 section('IPC Event Names');
-const requiredEvents = ['KEYSTROKE', 'SCORE_UPDATE', 'BREACH', 'GAZE', 'LIVENESS', 'PROCESS', 'SESSION_START', 'SESSION_END'];
+const requiredEvents = ['KEYSTROKE', 'SCORE_UPDATE', 'BREACH', 'GAZE', 'LIVENESS', 'PROCESS', 'SESSION_START', 'SESSION_END', 'NETWORK'];
 for (const ev of requiredEvents) {
   assert(EVENTS[ev] !== undefined, `EVENTS.${ev} exists (= "${EVENTS[ev]}")`);
 }
@@ -52,6 +54,7 @@ assert(EVENTS.LIVENESS === 'signal:liveness', 'LIVENESS event name matches contr
 assert(EVENTS.PROCESS === 'signal:process', 'PROCESS event name matches contract');
 assert(EVENTS.SESSION_START === 'session:start', 'SESSION_START event name matches contract');
 assert(EVENTS.SESSION_END === 'session:end', 'SESSION_END event name matches contract');
+assert(EVENTS.NETWORK === 'signal:network', 'NETWORK event name matches contract');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 2. MODULE EXPORTS VALIDATION
@@ -67,6 +70,17 @@ section('Module Exports — Process Scanner (DEV3)');
 const processModule = require('../src/process/index');
 assert(typeof processModule.startProcessScanner === 'function', 'startProcessScanner exported');
 
+section('Module Exports — Network Monitor (DEV5)');
+const networkModule = require('../src/network/index');
+assert(typeof networkModule.startNetworkScanner === 'function', 'startNetworkScanner exported');
+assert(typeof networkModule.stopNetworkScanner === 'function', 'stopNetworkScanner exported');
+
+const { NetworkScanner } = require('../src/network/scanner');
+assert(typeof NetworkScanner === 'function', 'NetworkScanner class exported from scanner.js');
+const ns = new NetworkScanner();
+assert(typeof ns.start === 'function', 'NetworkScanner.start exists');
+assert(typeof ns.stop === 'function', 'NetworkScanner.stop exists');
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 3. CROSS-MODULE ISOLATION
 // ═══════════════════════════════════════════════════════════════════════════
@@ -76,6 +90,7 @@ const moduleDirs = {
   detection: path.join(__dirname, '..', 'src', 'detection'),
   gaze: path.join(__dirname, '..', 'src', 'gaze'),
   process: path.join(__dirname, '..', 'src', 'process'),
+  network: path.join(__dirname, '..', 'src', 'network'),
 };
 
 // DEV1 must NOT import gaze or process
@@ -95,6 +110,13 @@ for (const f of fs.readdirSync(moduleDirs.process).filter(f => f.endsWith('.js')
   const c = fs.readFileSync(path.join(moduleDirs.process, f), 'utf8');
   assert(!c.includes("src/detection"), `process/${f} ✗ detection`);
   assert(!c.includes("src/gaze"), `process/${f} ✗ gaze`);
+}
+// DEV5 must NOT import detection, gaze, or process
+for (const f of fs.readdirSync(moduleDirs.network).filter(f => f.endsWith('.js'))) {
+  const c = fs.readFileSync(path.join(moduleDirs.network, f), 'utf8');
+  assert(!c.includes("src/detection"), `network/${f} ✗ detection`);
+  assert(!c.includes("src/gaze"), `network/${f} ✗ gaze`);
+  assert(!c.includes("src/process"), `network/${f} ✗ process`);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -247,6 +269,24 @@ assert(mainSource.includes('preload.js'), 'main.js references preload.js');
 
 // Liveness inversion check: live=false should mean flagged=true
 assert(mainSource.includes('!data.live'), 'main.js inverts liveness (live=false → flagged=true)');
+assert(mainSource.includes('startNetworkScanner'), 'main.js calls startNetworkScanner');
+assert(mainSource.includes('stopNetworkScanner'), 'main.js calls stopNetworkScanner');
+assert(mainSource.includes('NETWORK_BLOCKLIST'), 'main.js imports NETWORK_BLOCKLIST');
+assert(mainSource.includes('onBeforeRequest'), 'main.js has session request interceptor');
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 8a. NETWORK CONSTANTS VALIDATION
+// ═══════════════════════════════════════════════════════════════════════════
+section('Network Constants');
+assert(EVENTS.NETWORK === 'signal:network', 'EVENTS.NETWORK = signal:network');
+assert(Array.isArray(NETWORK_BLOCKLIST), 'NETWORK_BLOCKLIST is an array');
+assert(NETWORK_BLOCKLIST.length > 5, `NETWORK_BLOCKLIST has ${NETWORK_BLOCKLIST.length} entries (>5)`);
+assert(NETWORK_SCAN_INTERVAL_MS === 15000, 'NETWORK_SCAN_INTERVAL_MS = 15000');
+assert(WEIGHT_NETWORK === 22, 'WEIGHT_NETWORK = 22');
+assert(RECOVERY_NETWORK === 1, 'RECOVERY_NETWORK = 1');
+
+// Verify preload includes signal:network
+assert(preloadSource.includes("'signal:network'"), 'Preload on whitelist has signal:network');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 8. FILE STRUCTURE — ARCHITECTURE.md COMPLIANCE
@@ -258,6 +298,7 @@ const requiredFiles = [
   'src/detection/keystroke.js', 'src/detection/bayesian.js', 'src/detection/index.js',
   'src/gaze/gazeEngine.js', 'src/gaze/liveness.js', 'src/gaze/index.js',
   'src/process/scanner.js', 'src/process/gemini.js', 'src/process/index.js',
+  'src/network/scanner.js', 'src/network/index.js',
   'shared/constants.js', 'shared/types.js',
 ];
 
