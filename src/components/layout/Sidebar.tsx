@@ -351,6 +351,11 @@ export default function Sidebar({
               value={riskFactors.liveness}
               icon="face"
             />
+            <RiskBar
+              label="NETWORK"
+              value={riskFactors.network}
+              icon="language"
+            />
           </div>
         </div>
       )}
@@ -363,6 +368,7 @@ export default function Sidebar({
             { icon: "visibility", value: riskFactors.gaze },
             { icon: "memory", value: riskFactors.process },
             { icon: "face", value: riskFactors.liveness },
+            { icon: "language", value: riskFactors.network },
           ].map((r) => {
             const c =
               r.value > 65

@@ -87,8 +87,23 @@ app.on('window-all-closed', () => {
 
 // ─── IPC Handlers ────────────────────────────────────────────────────────────
 
+let sessionActive = false;
+let endDebounceTimer = null;
+
 // When UI fires session:start (DEV4 -> All modules)
 ipcMain.on(EVENTS.SESSION_START, (event, data) => {
+  // Cancel any pending session:end (React Strict Mode sends start→end→start)
+  if (endDebounceTimer) {
+    clearTimeout(endDebounceTimer);
+    endDebounceTimer = null;
+  }
+
+  if (sessionActive) {
+    console.log('[DEV4:main] Session already active — ignoring duplicate start');
+    return;
+  }
+
+  sessionActive = true;
   console.log('[DEV4:main] Session started:', data);
 
   // DEV1: Start Keystroke Entropy listener & Bayesian engine
@@ -104,11 +119,20 @@ ipcMain.on(EVENTS.SESSION_START, (event, data) => {
   mainWindow.webContents.send(EVENTS.SESSION_START, data);
 });
 
-// When UI fires session:end
+// When UI fires session:end — debounced to survive React Strict Mode
 ipcMain.on(EVENTS.SESSION_END, (event, data) => {
-  console.log('[DEV4:main] Session ended:', data);
-  stopDetection();
-  stopNetworkScanner();
+  // Debounce: wait 500ms before actually stopping.
+  // If session:start fires again within that window, we cancel the stop.
+  if (endDebounceTimer) clearTimeout(endDebounceTimer);
+
+  endDebounceTimer = setTimeout(() => {
+    if (!sessionActive) return;
+    console.log('[DEV4:main] Session ended:', data);
+    sessionActive = false;
+    stopDetection();
+    stopNetworkScanner();
+    endDebounceTimer = null;
+  }, 500);
 });
 
 // Gaze Signal (Renderer DEV2 -> Main DEV1 Bayesian Engine)

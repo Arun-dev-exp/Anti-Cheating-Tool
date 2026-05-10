@@ -23,10 +23,10 @@ interface MonitoringState {
 
 // Default signal cards — will be updated by real IPC signals
 const defaultSignals: SignalData[] = [
-  { module: "keystroke", icon: "⌨", value: "—", unit: "ms", state: "NORMAL", readings: [] },
-  { module: "gaze", icon: "👁", value: "—", unit: "%", state: "NORMAL", readings: [] },
+  { module: "keystroke", icon: "⌨", value: "100", unit: "%", state: "NORMAL", readings: [] },
+  { module: "gaze", icon: "👁", value: "100", unit: "%", state: "NORMAL", readings: [] },
   { module: "process", icon: "⚙", value: "—", unit: "active", state: "NORMAL", readings: [] },
-  { module: "liveness", icon: "🔲", value: "—", unit: "%", state: "NORMAL", readings: [] },
+  { module: "liveness", icon: "👤", value: "100", unit: "%", state: "NORMAL", readings: [] },
   { module: "network", icon: "🌐", value: "0", unit: "flags", state: "NORMAL", readings: [] },
 ];
 
@@ -37,40 +37,18 @@ function riskToSignalState(value: number): "NORMAL" | "ELEVATED" | "FLAGGED" {
   return "NORMAL";
 }
 
-/** Build signals array from risk factors */
-function buildSignals(risks: RiskFactors): SignalData[] {
-  return [
-    {
-      module: "keystroke", icon: "⌨",
-      value: String(risks.keystroke),
-      unit: "%", state: riskToSignalState(risks.keystroke),
-      readings: [],
-    },
-    {
-      module: "gaze", icon: "👁",
-      value: String(100 - risks.gaze), // Invert: high risk = low gaze %
-      unit: "%", state: riskToSignalState(risks.gaze),
-      readings: [],
-    },
-    {
-      module: "process", icon: "⚙",
-      value: String(risks.process),
-      unit: "%", state: riskToSignalState(risks.process),
-      readings: [],
-    },
-    {
-      module: "liveness", icon: "🔲",
-      value: String(100 - risks.liveness),
-      unit: "%", state: riskToSignalState(risks.liveness),
-      readings: [],
-    },
-    {
-      module: "network", icon: "🌐",
-      value: String(risks.network),
-      unit: "%", state: riskToSignalState(risks.network),
-      readings: [],
-    },
-  ];
+/** Update only the states of existing signals based on new risk factors */
+function updateSignalStates(signals: SignalData[], risks: RiskFactors): SignalData[] {
+  return signals.map((sig) => {
+    switch (sig.module) {
+      case "keystroke": return { ...sig, state: riskToSignalState(risks.keystroke), value: String(100 - risks.keystroke), unit: "%" };
+      case "gaze": return { ...sig, state: riskToSignalState(risks.gaze), value: String(100 - risks.gaze) };
+      case "process": return { ...sig, state: riskToSignalState(risks.process) };
+      case "liveness": return { ...sig, state: riskToSignalState(risks.liveness), value: String(100 - risks.liveness) };
+      case "network": return { ...sig, state: riskToSignalState(risks.network) };
+      default: return sig;
+    }
+  });
 }
 
 let eventCounter = 0;
@@ -85,7 +63,7 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
   bridgeConnected: false,
 
   setScore: (score) => set({ integrityScore: score }),
-  setRiskFactors: (r) => set({ riskFactors: r, signals: buildSignals(r) }),
+  setRiskFactors: (r) => set((state) => ({ riskFactors: r, signals: updateSignalStates(state.signals, r) })),
 
   addEvent: (e) => set((s) => ({ events: [e, ...s.events].slice(0, 100) })), // Keep last 100
 
@@ -160,36 +138,61 @@ export const useMonitoringStore = create<MonitoringState>((set, get) => ({
 
     // Listen for keystroke signals
     bridge.on("signal:keystroke", (data: { flagged: boolean; entropy: number; ts: number }) => {
-      const { riskFactors } = get();
+      const { riskFactors, signals } = get();
       const newRisk = data.flagged
         ? Math.min(100, riskFactors.keystroke + 12)
         : Math.max(0, riskFactors.keystroke - 3);
       const newFactors = { ...riskFactors, keystroke: newRisk };
-      set({ riskFactors: newFactors, signals: buildSignals(newFactors) });
+      
+      const newSignals = signals.map(sig => {
+        if (sig.module === "keystroke") {
+          const newReadings = [...sig.readings, data.entropy].slice(-10);
+          return { ...sig, readings: newReadings };
+        }
+        return sig;
+      });
+
+      set({ riskFactors: newFactors, signals: updateSignalStates(newSignals, newFactors) });
       get().applySignalEvent("keystroke", data.flagged);
     });
 
     // Listen for process signals
-    bridge.on("signal:process", (data: { flagged: boolean; processes?: string[]; ts: number }) => {
-      const { riskFactors } = get();
+    bridge.on("signal:process", (data: { flagged: boolean; processName?: string; ts: number }) => {
+      const { riskFactors, signals } = get();
       const newRisk = data.flagged
         ? Math.min(100, riskFactors.process + 15)
         : Math.max(0, riskFactors.process - 1);
       const newFactors = { ...riskFactors, process: newRisk };
-      set({ riskFactors: newFactors, signals: buildSignals(newFactors) });
+      
+      const newSignals = signals.map(sig => {
+        if (sig.module === "process") {
+          return { ...sig, value: data.flagged && data.processName ? data.processName : "1" };
+        }
+        return sig;
+      });
+
+      set({ riskFactors: newFactors, signals: updateSignalStates(newSignals, newFactors) });
       get().applySignalEvent("process", data.flagged,
-        data.flagged && data.processes ? `Unauthorized: ${data.processes.join(", ")}` : undefined
+        data.flagged && data.processName ? `Unauthorized: ${data.processName}` : undefined
       );
     });
 
     // Listen for network signals
     bridge.on("signal:network", (data: { flagged: boolean; domain?: string; ts: number }) => {
-      const { riskFactors } = get();
+      const { riskFactors, signals } = get();
       const newRisk = data.flagged
         ? Math.min(100, riskFactors.network + 18)
         : Math.max(0, riskFactors.network - 1);
       const newFactors = { ...riskFactors, network: newRisk };
-      set({ riskFactors: newFactors, signals: buildSignals(newFactors) });
+      
+      const newSignals = signals.map(sig => {
+        if (sig.module === "network") {
+          return { ...sig, value: data.domain ? data.domain : "Intercepted", unit: "AI API" };
+        }
+        return sig;
+      });
+
+      set({ riskFactors: newFactors, signals: updateSignalStates(newSignals, newFactors) });
       get().applySignalEvent("network", data.flagged,
         data.flagged && data.domain ? `AI API blocked: ${data.domain}` : undefined
       );
