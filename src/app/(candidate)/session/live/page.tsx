@@ -66,18 +66,22 @@ export default function LiveDashboardPage() {
     setCameraStream(stream);
   }, []);
 
+  const enginesRef = useRef(false);
+
   useEffect(() => {
-    if (!cameraStream || enginesStarted || !videoRef.current) return;
+    if (!cameraStream || enginesRef.current || !videoRef.current) return;
 
     const video = videoRef.current;
+    let cancelled = false;
 
-    // Wait for video to be ready
     const startEngines = async () => {
       if (video.readyState < 2) {
         await new Promise<void>((resolve) => {
           video.addEventListener("loadeddata", () => resolve(), { once: true });
         });
       }
+
+      if (cancelled) return;
 
       // Start gaze engine with signal callback
       await startGazeEngine(video, (data) => {
@@ -93,6 +97,8 @@ export default function LiveDashboardPage() {
           data.offScreen ? `Off-screen gaze — ${(data.durationMs / 1000).toFixed(1)}s continuous` : undefined
         );
       });
+
+      if (cancelled) return;
 
       // Start liveness engine with signal callback
       await startLivenessEngine(video, undefined, (data) => {
@@ -111,17 +117,25 @@ export default function LiveDashboardPage() {
         );
       });
 
+      if (cancelled) return;
+
+      enginesRef.current = true;
       setEnginesStarted(true);
-      console.log("[LiveSession] All detection engines started");
+      console.log("[LiveSession] All detection engines started — persistent");
     };
 
     startEngines();
 
     return () => {
-      stopGazeEngine();
-      stopLivenessEngine();
+      cancelled = true;
+      // Only stop engines on actual unmount, not on re-renders
+      if (enginesRef.current) {
+        stopGazeEngine();
+        stopLivenessEngine();
+        enginesRef.current = false;
+      }
     };
-  }, [cameraStream, enginesStarted]);
+  }, [cameraStream]); // Only depend on cameraStream, NOT enginesStarted
 
   // Post score updates to Supabase
   useEffect(() => {

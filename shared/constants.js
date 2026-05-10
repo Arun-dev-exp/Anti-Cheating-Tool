@@ -18,15 +18,20 @@ const PROCESS_SCAN_INTERVAL_MS = 30000; // 30 seconds
 const NETWORK_SCAN_INTERVAL_MS = 15000; // 15 seconds
 const NETWORK_BLOCKLIST = [
   'api.openai.com',
+  'chat.openai.com',
+  'chatgpt.com',              // ChatGPT's current primary domain
   'api.anthropic.com',
+  'claude.ai',
   'generativelanguage.googleapis.com',
+  'gemini.google.com',        // Google Gemini web UI
   'openrouter.ai',
   'api.groq.com',
   'api.mistral.ai',
   'api.cohere.com',
-  'chat.openai.com',
-  'claude.ai',
   'copilot.microsoft.com',
+  'perplexity.ai',            // Perplexity AI
+  'you.com',                  // You.com AI search
+  'deepseek.com',             // DeepSeek AI
 ];
 
 // ─── Scoring Thresholds ─────────────────────────────────────────

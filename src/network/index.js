@@ -25,9 +25,19 @@ function startNetworkScanner(mainWindow) {
     throw new Error('[DEV5] startNetworkScanner requires a valid BrowserWindow instance');
   }
 
+  // Lazy-load to avoid circular dependency
+  let _applySignal = null;
+
   scanner = new NetworkScanner();
 
   scanner.on('ai-request-detected', (data) => {
+    // Feed into Bayesian risk engine
+    if (!_applySignal) {
+      _applySignal = require('../detection/bayesian').applySignal;
+    }
+    _applySignal('network', true);
+
+    // Send to renderer UI
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send(EVENTS.NETWORK, {
         flagged: true,

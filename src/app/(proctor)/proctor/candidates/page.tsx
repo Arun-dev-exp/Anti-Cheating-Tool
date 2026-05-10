@@ -62,6 +62,8 @@ export default function CandidatesPage() {
           setParticipants(
             parts.map((p) => ({
               ...p,
+              name: p.candidate_name ?? p.name ?? "Unknown",
+              risk_score: p.integrity_score ?? 100,
               session_code: sessionMap.get(p.session_id)?.code ?? "—",
               session_title: sessionMap.get(p.session_id)?.title ?? "—",
             }))

@@ -12,9 +12,12 @@ export default function JoinPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(0);
+  const [isElectron, setIsElectron] = useState<boolean | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
+    // Detect if running inside Electron (sentinelBridge exposed by preload.js)
+    setIsElectron(!!(window as any).sentinelBridge);
     inputRefs.current[0]?.focus();
   }, []);
 
@@ -104,6 +107,17 @@ export default function JoinPage() {
       {/* Radial glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] pointer-events-none"
         style={{ background: "radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)", animation: "pulseGlow 6s infinite alternate" }} />
+
+      {/* Electron-only warning */}
+      {isElectron === false && (
+        <div className="fixed top-0 left-0 right-0 z-50 px-4 py-3 flex items-center justify-center gap-2"
+          style={{ background: "linear-gradient(90deg, rgba(245,158,11,0.15), rgba(239,68,68,0.1))", borderBottom: "1px solid rgba(245,158,11,0.3)", backdropFilter: "blur(12px)" }}>
+          <span className="material-symbols-outlined text-status-suspicious" style={{ fontSize: "18px" }}>warning</span>
+          <span className="text-[12px] text-status-suspicious font-mono">
+            BROWSER MODE — Keystroke, Process & Network monitoring unavailable. Use the <strong>Sentinel Zero Desktop App</strong> for full integrity monitoring.
+          </span>
+        </div>
+      )}
 
       {/* Main card */}
       <div className="relative z-10 w-full max-w-[520px]" style={{ animation: "scaleIn 0.5s ease forwards" }}>

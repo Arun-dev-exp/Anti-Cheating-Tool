@@ -45,17 +45,19 @@ async function detectFace(video: HTMLVideoElement): Promise<{ faceCount: number;
   }
 
   try {
-    const results = await state.faceLandmarker.detectForVideo(video, performance.now());
+    // detectForVideo is synchronous — use a unique timestamp to avoid conflicts
+    const results = state.faceLandmarker.detectForVideo(video, performance.now());
 
     const faceCount = results.faceLandmarks?.length ?? 0;
 
-    // Confidence: based on number of detected landmarks (468 per face)
+    // Confidence: based on number of detected landmarks (478 per face)
     let confidence = 0;
     if (faceCount > 0 && results.faceLandmarks[0]) {
       const landmarkCount = results.faceLandmarks[0].length;
       confidence = Math.min(100, Math.round((landmarkCount / 478) * 100));
     }
 
+    console.log(`[LivenessEngine] Check: ${faceCount} face(s), confidence: ${confidence}%`);
     return { faceCount, confidence };
   } catch (err) {
     console.warn("[LivenessEngine] Detection error:", err);
