@@ -511,7 +511,7 @@ export default function SystemCheckPage() {
 
           {/* CTA */}
           <GradientButton
-            onClick={() => router.push("/waiting-room")}
+            onClick={() => router.push("/liveness")}
             disabled={!allReady}
           >
             {allReady ? (

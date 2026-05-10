@@ -519,11 +519,11 @@ export default function CalibrationPage() {
                 RECALIBRATE
               </button>
               <GradientButton
-                onClick={() => router.push("/session/live")}
+                onClick={() => router.push("/waiting-room")}
                 fullWidth={false}
                 className="flex-1"
               >
-                START SESSION
+                ENTER WAITING ROOM
                 <ArrowRight size={16} />
               </GradientButton>
             </div>

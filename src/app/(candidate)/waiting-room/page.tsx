@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CameraPreview from "@/components/features/CameraPreview";
 import { useSession } from "@/context/SessionContext";
-import { subscribeToSession } from "@/lib/sessions";
+import { subscribeToSession, getSessionById } from "@/lib/sessions";
 import { supabase } from "@/lib/supabase";
 
 export default function WaitingRoomPage() {
@@ -26,6 +26,14 @@ export default function WaitingRoomPage() {
   useEffect(() => {
     if (!sessionId) return;
 
+    // Check current status first — session may already be active
+    getSessionById(sessionId).then((session) => {
+      if (session?.status === "active") {
+        router.push("/session/live");
+      }
+    });
+
+    // Also listen for future status changes
     const channel = subscribeToSession(sessionId, (updatedSession) => {
       if (updatedSession.status === "active") {
         router.push("/session/live");
