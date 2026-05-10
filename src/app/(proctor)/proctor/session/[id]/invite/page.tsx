@@ -1,7 +1,8 @@
 "use client";
 import Link from "next/link";
 import GradientButton from "@/components/ui/GradientButton";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, use } from "react";
+import { getSessionById } from "@/lib/sessions";
 
 /* Deterministic QR grid generator */
 function generateQR(seed: string): boolean[] {
@@ -14,7 +15,6 @@ function generateQR(seed: string): boolean[] {
     hash = ((hash * 1103515245 + 12345) | 0) >>> 0;
     grid.push((hash % 100) > 42);
   }
-  // Force corner finder patterns (3 corners)
   const set = (r: number, c: number, v: boolean) => { grid[r * 21 + c] = v; };
   for (let dr = 0; dr < 7; dr++)
     for (let dc = 0; dc < 7; dc++) {
@@ -26,9 +26,34 @@ function generateQR(seed: string): boolean[] {
   return grid;
 }
 
-export default function SessionInvitePage() {
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function SessionInvitePage({ params }: PageProps) {
+  const { id } = use(params);
   const [copied, setCopied] = useState<string | null>(null);
-  const qrGrid = useMemo(() => generateQR("SZ-8821"), []);
+  const [session, setSession] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSession() {
+      const data = await getSessionById(id);
+      setSession(data);
+      setLoading(false);
+    }
+    fetchSession();
+  }, [id]);
+
+  const sessionCode = (session?.code as string) || "------";
+  const sessionTitle = (session?.title as string) || "Session";
+  const maxCandidates = (session?.max_candidates as number) || 30;
+  const durationMinutes = (session?.duration_minutes as number) || 120;
+  const createdAt = session?.created_at
+    ? new Date(session.created_at as string).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "—";
+
+  const qrGrid = useMemo(() => generateQR(sessionCode), [sessionCode]);
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -37,11 +62,22 @@ export default function SessionInvitePage() {
   };
 
   const sessionDetails = [
-    { label: "Session ID", value: "SZ-8821", icon: "tag" },
-    { label: "Created", value: "Today, 10:28 AM", icon: "schedule" },
-    { label: "Capacity", value: "30 candidates", icon: "groups" },
-    { label: "Duration", value: "120 minutes", icon: "timer" },
+    { label: "Session Code", value: sessionCode, icon: "tag" },
+    { label: "Created", value: createdAt, icon: "schedule" },
+    { label: "Capacity", value: `${maxCandidates} candidates`, icon: "groups" },
+    { label: "Duration", value: `${durationMinutes} minutes`, icon: "timer" },
   ];
+
+  if (loading) {
+    return (
+      <main className="p-6 md:p-8 max-w-4xl flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[24px] text-accent-blue animate-spin">progress_activity</span>
+          <span className="text-text-secondary font-mono text-[13px]">Loading session...</span>
+        </div>
+      </main>
+    );
+  }
 
   return (
         <main className="p-6 md:p-8 max-w-4xl">
@@ -57,9 +93,9 @@ export default function SessionInvitePage() {
               </div>
               <div className="flex-1">
                 <h1 className="text-[18px] font-ui font-semibold text-text-primary leading-tight">Session Created Successfully</h1>
-                <p className="text-[13px] text-text-secondary mt-0.5">Share the session code or invite link with your candidates to begin</p>
+                <p className="text-[13px] text-text-secondary mt-0.5">Share the session code with your candidates — <span className="font-mono text-accent-blue font-semibold">{sessionTitle}</span></p>
               </div>
-              <Link href="/proctor/session/SZ-8821/waiting">
+              <Link href={`/proctor/session/${id}/waiting`}>
                 <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[12px] font-mono font-semibold uppercase tracking-wider transition-all duration-200"
                   style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#22C55E" }}>
                   <span className="material-symbols-outlined text-[16px]">meeting_room</span>
@@ -84,10 +120,10 @@ export default function SessionInvitePage() {
                 <div className="p-6 text-center">
                   <div className="font-mono text-[42px] font-bold text-accent-blue tracking-[0.35em] leading-none mb-4"
                     style={{ textShadow: "0 0 30px rgba(59,130,246,0.15)" }}>
-                    SZ-8821
+                    {sessionCode}
                   </div>
                   <button
-                    onClick={() => handleCopy("SZ-8821", "code")}
+                    onClick={() => handleCopy(sessionCode, "code")}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-[11px] font-mono font-semibold uppercase tracking-wider transition-all duration-200"
                     style={{
                       background: copied === "code" ? "rgba(34,197,94,0.08)" : "rgba(59,130,246,0.06)",
@@ -113,10 +149,10 @@ export default function SessionInvitePage() {
                 <div className="p-5">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 px-4 py-2.5 rounded-lg bg-bg-base/50 border border-border-subtle/40 font-mono text-[12px] text-text-secondary/70 truncate">
-                      https://sentinelzero.app/join?code=SZ-8821
+                      {typeof window !== "undefined" ? `${window.location.origin}/join` : "sentinelzero.app/join"} (Code: {sessionCode})
                     </div>
                     <button
-                      onClick={() => handleCopy("https://sentinelzero.app/join?code=SZ-8821", "link")}
+                      onClick={() => handleCopy(sessionCode, "link")}
                       className="shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200"
                       style={{
                         background: copied === "link" ? "rgba(34,197,94,0.08)" : "rgba(59,130,246,0.06)",
@@ -155,7 +191,7 @@ export default function SessionInvitePage() {
               {/* Share Actions */}
               <div className="grid grid-cols-3 gap-3" style={{ animation: "slideUp 0.4s ease-out 0.2s both" }}>
                 <button
-                  onClick={() => handleCopy("Session: SZ-8821 | Link: https://sentinelzero.app/join?code=SZ-8821", "all")}
+                  onClick={() => handleCopy(`Session: ${sessionCode} | Title: ${sessionTitle}`, "all")}
                   className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-[11px] font-mono font-semibold uppercase tracking-wider transition-all duration-200 border border-border-subtle bg-bg-surface/30 text-text-secondary/50 hover:border-accent-blue/20 hover:text-accent-blue"
                 >
                   <span className="material-symbols-outlined text-[16px]">
@@ -183,7 +219,6 @@ export default function SessionInvitePage() {
                   <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider font-mono">QR Code</span>
                 </div>
                 <div className="p-6 flex flex-col items-center">
-                  {/* QR Code */}
                   <div className="rounded-xl p-4 bg-white mb-4" style={{ boxShadow: "0 0 30px rgba(59,130,246,0.08)" }}>
                     <div className="w-[168px] h-[168px] grid grid-cols-[repeat(21,1fr)] grid-rows-[repeat(21,1fr)] gap-[1px]">
                       {qrGrid.map((filled, i) => (
@@ -195,7 +230,7 @@ export default function SessionInvitePage() {
                     Scan to join session
                   </p>
                   <span className="text-[10px] text-text-secondary/30 font-mono">
-                    sentinelzero.app/join?code=SZ-8821
+                    Code: {sessionCode}
                   </span>
                 </div>
               </div>
@@ -209,9 +244,9 @@ export default function SessionInvitePage() {
                 </div>
                 <div className="p-5 space-y-3">
                   {[
-                    { step: "1", text: "Navigate to sentinelzero.app/join" },
-                    { step: "2", text: "Enter session code SZ-8821" },
-                    { step: "3", text: "Complete system check & liveness" },
+                    { step: "1", text: "Open the Sentinel Zero join page" },
+                    { step: "2", text: `Enter session code ${sessionCode}` },
+                    { step: "3", text: "Complete system check & consent" },
                     { step: "4", text: "Wait in the lobby until session starts" },
                   ].map((item) => (
                     <div key={item.step} className="flex items-start gap-3">
@@ -230,7 +265,7 @@ export default function SessionInvitePage() {
                 style={{ animation: "slideUp 0.4s ease-out 0.18s both" }}>
                 <span className="material-symbols-outlined text-[14px] text-accent-cyan/40">encrypted</span>
                 <span className="text-[10px] text-text-secondary/30 font-mono">
-                  All session data is end-to-end encrypted. Invite links expire after session ends.
+                  All session data is end-to-end encrypted. Session codes expire when session ends.
                 </span>
               </div>
             </div>

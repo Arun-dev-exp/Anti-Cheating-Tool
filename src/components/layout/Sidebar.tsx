@@ -5,6 +5,7 @@ import IntegrityGauge from "@/components/ui/IntegrityGauge";
 import RiskBar from "@/components/ui/RiskBar";
 import { RiskFactors } from "@/types";
 import { useSidebar } from "@/context/SidebarContext";
+import { useAuth } from "@/context/AuthContext";
 
 interface SidebarProps {
   variant?: "candidate" | "proctor";
@@ -18,7 +19,7 @@ const proctorNavItems = [
     label: "Sessions",
     href: "/proctor/create",
     icon: "event_note",
-    badge: "3",
+    badge: null,
   },
   { label: "Candidates", href: "/proctor/candidates", icon: "groups", badge: null },
   { label: "Analytics", href: "/proctor/analytics", icon: "analytics", badge: null },
@@ -28,10 +29,11 @@ const proctorNavItems = [
 export default function Sidebar({
   variant = "candidate",
   score = 92,
-  riskFactors = { keystroke: 8, gaze: 12, process: 5, liveness: 3 },
+  riskFactors = { keystroke: 0, gaze: 0, process: 0, liveness: 0, network: 0 },
 }: SidebarProps) {
   const pathname = usePathname();
   const { collapsed, toggle } = useSidebar();
+  const { user } = useAuth();
 
   /* ═══════════════════════════════════════
      PROCTOR SIDEBAR
@@ -149,45 +151,8 @@ export default function Sidebar({
         <div style={{ padding: collapsed ? "0 8px" : "0 12px" }}>
           <div className="sidebar-divider" />
 
-          {/* Quick stats — only when expanded */}
-          {!collapsed && (
-            <div className="sidebar-stats-card sidebar-label-fade">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[9px] font-mono text-text-secondary/30 uppercase tracking-widest">
-                  Today
-                </span>
-                <span className="sidebar-live-dot" />
-              </div>
-              <div className="flex items-center gap-4">
-                <div>
-                  <span className="font-mono text-[18px] font-bold text-text-primary leading-none">
-                    3
-                  </span>
-                  <span className="text-[9px] text-text-secondary/40 font-mono block">
-                    Active
-                  </span>
-                </div>
-                <div className="w-px h-6 bg-border-subtle/40" />
-                <div>
-                  <span className="font-mono text-[18px] font-bold text-text-primary leading-none">
-                    24
-                  </span>
-                  <span className="text-[9px] text-text-secondary/40 font-mono block">
-                    Online
-                  </span>
-                </div>
-                <div className="w-px h-6 bg-border-subtle/40" />
-                <div>
-                  <span className="font-mono text-[18px] font-bold text-amber-400 leading-none">
-                    1
-                  </span>
-                  <span className="text-[9px] text-text-secondary/40 font-mono block">
-                    Flagged
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
+
+
 
           {/* User profile */}
           <div
@@ -199,26 +164,31 @@ export default function Sidebar({
           >
             <div className="sidebar-user-avatar">
               <span className="text-[11px] text-accent-blue font-bold font-mono">
-                PM
+                {user?.user_metadata?.full_name ? user.user_metadata.full_name.substring(0, 2).toUpperCase() : "PR"}
               </span>
             </div>
             {!collapsed && (
               <div className="flex-1 min-w-0 sidebar-label-fade">
                 <div className="text-[11px] text-text-primary font-semibold font-ui truncate">
-                  Dr. Priya Mehta
+                  {user?.user_metadata?.full_name || "Proctor User"}
                 </div>
-                <div className="text-[9px] text-text-secondary/40 font-mono">
-                  Proctor
+                <div className="text-[9px] text-text-secondary/40 font-mono truncate">
+                  {user?.email || "Proctor"}
                 </div>
               </div>
             )}
             {!collapsed && (
-              <span
-                className="material-symbols-outlined text-text-secondary/20 hover:text-text-secondary/50 transition-colors cursor-pointer"
+              <button
+                onClick={async () => {
+                  const { supabase } = await import("@/lib/supabase");
+                  await supabase.auth.signOut();
+                }}
+                className="material-symbols-outlined text-text-secondary/30 hover:text-accent-red transition-colors cursor-pointer ml-auto"
                 style={{ fontSize: "16px" }}
+                title="Sign Out"
               >
-                more_horiz
-              </span>
+                logout
+              </button>
             )}
           </div>
 

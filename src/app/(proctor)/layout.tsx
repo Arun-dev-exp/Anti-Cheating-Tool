@@ -3,8 +3,28 @@ import { SidebarProvider, useSidebar } from "@/context/SidebarContext";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+
 function ProctorShell({ children }: { children: React.ReactNode }) {
   const { collapsed } = useSidebar();
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen bg-bg-base flex items-center justify-center">
+        <span className="material-symbols-outlined text-accent-blue text-4xl animate-spin">progress_activity</span>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-bg-base">

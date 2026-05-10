@@ -1,35 +1,120 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import GradientButton from "@/components/ui/GradientButton";
+import { getSessionById, getParticipantsBySession, startSession, subscribeToParticipants } from "@/lib/sessions";
+import { supabase } from "@/lib/supabase";
 
-const candidates = [
-  { name: "Arjun Sharma", email: "arjun@example.com", systemCheck: true, liveness: true, joinedAt: "10:32 AM", avatar: "AS" },
-  { name: "Meera Patel", email: "meera@example.com", systemCheck: true, liveness: true, joinedAt: "10:33 AM", avatar: "MP" },
-  { name: "Ravi Kumar", email: "ravi@example.com", systemCheck: true, liveness: true, joinedAt: "10:35 AM", avatar: "RK" },
-  { name: "Sneha Reddy", email: "sneha@example.com", systemCheck: false, liveness: false, joinedAt: "10:36 AM", avatar: "SR" },
-  { name: "Amit Joshi", email: "amit@example.com", systemCheck: true, liveness: true, joinedAt: "10:37 AM", avatar: "AJ" },
-  { name: "Priya Nair", email: "priya@example.com", systemCheck: true, liveness: false, joinedAt: "10:38 AM", avatar: "PN" },
-];
+interface Participant {
+  id: string;
+  candidate_name: string;
+  status: string;
+  joined_at: string;
+}
 
-export default function ProctorWaitingPage() {
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function ProctorWaitingPage({ params }: PageProps) {
+  const { id } = use(params);
   const router = useRouter();
   const [starting, setStarting] = useState(false);
   const [elapsed, setElapsed] = useState(0);
-  const readyCount = candidates.filter((c) => c.systemCheck && c.liveness).length;
-  const pendingCount = candidates.length - readyCount;
+  const [session, setSession] = useState<Record<string, unknown> | null>(null);
+  const [candidates, setCandidates] = useState<Participant[]>([]);
+  const [loading, setLoading] = useState(true);
 
+  // Fetch session and participants
+  useEffect(() => {
+    async function load() {
+      const [sess, parts] = await Promise.all([
+        getSessionById(id),
+        getParticipantsBySession(id),
+      ]);
+      setSession(sess);
+      setCandidates((parts || []) as unknown as Participant[]);
+      setLoading(false);
+    }
+    load();
+  }, [id]);
+
+  // Subscribe to new participants joining in real-time
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = subscribeToParticipants(
+      id,
+      (newParticipant) => {
+        setCandidates((prev) => {
+          // Avoid duplicates
+          if (prev.find((p) => p.id === (newParticipant as unknown as Participant).id)) return prev;
+          return [...prev, newParticipant as unknown as Participant];
+        });
+      },
+      (updatedParticipant) => {
+        setCandidates((prev) =>
+          prev.map((p) =>
+            p.id === (updatedParticipant as unknown as Participant).id
+              ? (updatedParticipant as unknown as Participant)
+              : p
+          )
+        );
+      }
+    );
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
+  // Elapsed timer
   useEffect(() => {
     const t = setInterval(() => setElapsed((p) => p + 1), 1000);
     return () => clearInterval(t);
   }, []);
 
+  const sessionCode = (session?.code as string) || "------";
+  const maxCandidates = (session?.max_candidates as number) || 30;
   const fmtTime = `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}`;
 
-  const handleStart = () => {
+  const handleStart = async () => {
     setStarting(true);
-    setTimeout(() => router.push("/proctor/session/SZ-8821"), 800);
+    try {
+      await startSession(id);
+      router.push(`/proctor/session/${id}`);
+    } catch {
+      setStarting(false);
+    }
   };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const fmtJoinedAt = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    } catch {
+      return "—";
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="p-6 md:p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[24px] text-accent-blue animate-spin">progress_activity</span>
+          <span className="text-text-secondary font-mono text-[13px]">Loading waiting room...</span>
+        </div>
+      </main>
+    );
+  }
 
   return (
         <main className="p-6 md:p-8">
@@ -44,14 +129,14 @@ export default function ProctorWaitingPage() {
               <div>
                 <h1 className="text-[20px] font-ui font-semibold text-text-primary leading-tight">Waiting Room</h1>
                 <p className="text-[13px] text-text-secondary flex items-center gap-1.5">
-                  Session <span className="font-mono text-accent-blue">SZ-8821</span>
+                  Session <span className="font-mono text-accent-blue">{sessionCode}</span>
                   <span className="text-text-secondary/30">•</span>
                   <span className="font-mono text-text-secondary/60">{fmtTime} elapsed</span>
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <GradientButton onClick={handleStart} fullWidth={false} className="!w-auto !px-8" disabled={starting || pendingCount > 0}>
+              <GradientButton onClick={handleStart} fullWidth={false} className="!w-auto !px-8" disabled={starting || candidates.length === 0}>
                 <span className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px]">
                     {starting ? "progress_activity" : "play_arrow"}
@@ -65,10 +150,10 @@ export default function ProctorWaitingPage() {
           {/* ── Stats Row ── */}
           <div className="grid grid-cols-4 gap-4 mb-6">
             {[
-              { label: "Total Joined", value: candidates.length, max: "30", icon: "group_add", color: "#3B82F6" },
-              { label: "System Ready", value: readyCount, max: String(candidates.length), icon: "check_circle", color: "#22C55E" },
-              { label: "Pending", value: pendingCount, max: null, icon: "pending", color: pendingCount > 0 ? "#F59E0B" : "#22C55E" },
-              { label: "Capacity", value: `${Math.round((candidates.length / 30) * 100)}%`, max: null, icon: "donut_large", color: "#06B6D4" },
+              { label: "Total Joined", value: candidates.length, max: String(maxCandidates), icon: "group_add", color: "#3B82F6" },
+              { label: "Ready", value: candidates.filter(c => c.status === "waiting").length, max: String(candidates.length), icon: "check_circle", color: "#22C55E" },
+              { label: "In Progress", value: candidates.filter(c => c.status === "active").length, max: null, icon: "pending", color: "#F59E0B" },
+              { label: "Capacity", value: `${Math.round((candidates.length / maxCandidates) * 100)}%`, max: null, icon: "donut_large", color: "#06B6D4" },
             ].map((stat, i) => (
               <div key={i} className="rounded-xl border border-border-subtle bg-bg-surface/40 p-4 flex items-center gap-3"
                 style={{ backdropFilter: "blur(8px)" }}>
@@ -110,93 +195,58 @@ export default function ProctorWaitingPage() {
 
             {/* Column Headers */}
             <div className="grid grid-cols-12 gap-4 px-5 py-2.5 border-b border-border-subtle/30 text-[9px] text-text-secondary/40 uppercase tracking-widest font-mono">
-              <span className="col-span-4">Candidate</span>
-              <span className="col-span-2">Joined At</span>
-              <span className="col-span-2">System Check</span>
-              <span className="col-span-2">Liveness</span>
-              <span className="col-span-2 text-right">Status</span>
+              <span className="col-span-5">Candidate</span>
+              <span className="col-span-3">Joined At</span>
+              <span className="col-span-4 text-right">Status</span>
             </div>
 
-            {/* Rows */}
-            {candidates.map((c, i) => {
-              const isReady = c.systemCheck && c.liveness;
-              return (
+            {/* Rows — REAL DATA */}
+            {candidates.length === 0 ? (
+              <div className="px-5 py-12 text-center">
+                <span className="material-symbols-outlined text-[36px] text-text-secondary/20 mb-3 block">person_search</span>
+                <p className="text-[14px] text-text-secondary/50 font-ui mb-1">No candidates have joined yet</p>
+                <p className="text-[12px] text-text-secondary/30 font-mono">Share code <span className="text-accent-blue">{sessionCode}</span> with your candidates</p>
+              </div>
+            ) : (
+              candidates.map((c, i) => (
                 <div
-                  key={c.email}
+                  key={c.id}
                   className="grid grid-cols-12 gap-4 px-5 py-3.5 border-b border-border-subtle/20 hover:bg-bg-panel/30 transition-all duration-150 group"
                   style={{ animation: `slideUp 0.4s ease-out ${i * 60}ms both` }}
                 >
                   {/* Candidate */}
-                  <div className="col-span-4 flex items-center gap-3">
+                  <div className="col-span-5 flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-mono font-bold shrink-0"
                       style={{
-                        background: isReady ? "rgba(34,197,94,0.06)" : "rgba(245,158,11,0.06)",
-                        border: `1px solid ${isReady ? "rgba(34,197,94,0.15)" : "rgba(245,158,11,0.15)"}`,
-                        color: isReady ? "#22C55E" : "#F59E0B",
+                        background: "rgba(34,197,94,0.06)",
+                        border: "1px solid rgba(34,197,94,0.15)",
+                        color: "#22C55E",
                       }}>
-                      {c.avatar}
+                      {getInitials(c.candidate_name)}
                     </div>
                     <div>
-                      <span className="text-[13px] text-text-primary font-medium block leading-tight">{c.name}</span>
-                      <span className="text-[11px] text-text-secondary/40 font-mono">{c.email}</span>
+                      <span className="text-[13px] text-text-primary font-medium block leading-tight">{c.candidate_name}</span>
+                      <span className="text-[11px] text-text-secondary/40 font-mono">{c.id.slice(0, 8)}</span>
                     </div>
                   </div>
 
                   {/* Joined At */}
-                  <div className="col-span-2 flex items-center gap-1.5">
+                  <div className="col-span-3 flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-[13px] text-text-secondary/30">schedule</span>
-                    <span className="text-[12px] text-text-secondary/70 font-mono">{c.joinedAt}</span>
-                  </div>
-
-                  {/* System Check */}
-                  <div className="col-span-2 flex items-center gap-1.5">
-                    {c.systemCheck ? (
-                      <>
-                        <span className="material-symbols-outlined text-[14px] text-status-secure">check_circle</span>
-                        <span className="text-[11px] text-status-secure font-mono font-medium">PASSED</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="material-symbols-outlined text-[14px] text-status-suspicious">pending</span>
-                        <span className="text-[11px] text-status-suspicious font-mono font-medium">PENDING</span>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Liveness */}
-                  <div className="col-span-2 flex items-center gap-1.5">
-                    {c.liveness ? (
-                      <>
-                        <span className="material-symbols-outlined text-[14px] text-status-secure">face</span>
-                        <span className="text-[11px] text-status-secure font-mono font-medium">VERIFIED</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="material-symbols-outlined text-[14px] text-status-suspicious">face_retouching_off</span>
-                        <span className="text-[11px] text-status-suspicious font-mono font-medium">WAITING</span>
-                      </>
-                    )}
+                    <span className="text-[12px] text-text-secondary/70 font-mono">{fmtJoinedAt(c.joined_at)}</span>
                   </div>
 
                   {/* Status */}
-                  <div className="col-span-2 flex items-center justify-end">
-                    {isReady ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider"
-                        style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#22C55E" }}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-status-secure" style={{ boxShadow: "0 0 4px #22C55E" }} />
-                        Ready
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider"
-                        style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#F59E0B" }}>
-                        <span className="w-1.5 h-1.5 rounded-full bg-status-suspicious" style={{ boxShadow: "0 0 4px #F59E0B", animation: "dotPulse 2s infinite" }} />
-                        Pending
-                      </span>
-                    ) }
+                  <div className="col-span-4 flex items-center justify-end">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold uppercase tracking-wider"
+                      style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", color: "#22C55E" }}>
+                      <span className="w-1.5 h-1.5 rounded-full bg-status-secure" style={{ boxShadow: "0 0 4px #22C55E" }} />
+                      Ready
+                    </span>
                   </div>
                 </div>
-              );
-            })}
+              ))
+            )}
 
             {/* Table Footer */}
             <div className="px-5 py-3 flex items-center justify-between bg-bg-surface/20">

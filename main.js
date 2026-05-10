@@ -20,9 +20,9 @@ function createWindow() {
     }
   });
 
-  // Load Next.js dev server
-  // Note: For production, this would load `app://` or a local static HTML file from `out/`
-  mainWindow.loadURL('http://localhost:3000');
+  // Load directly into the candidate Join Session screen.
+  // The landing page (/) is the interviewer marketing site — not for candidates.
+  mainWindow.loadURL('http://localhost:3000/join');
 
   // Wire up process scanner events to the Bayesian engine via monkey patching
   // Since DEV3's scanner sends directly to webContents, we intercept it here to apply the signal.

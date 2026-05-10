@@ -25,19 +25,20 @@ function Section({ children, className = "" }: { children: React.ReactNode; clas
 }
 
 const features = [
-  { icon: "fingerprint", title: "Keystroke Biometrics", desc: "Continuous identity verification through unique typing rhythm analysis — impossible to fake." },
-  { icon: "visibility", title: "Gaze Tracking", desc: "AI-powered eye movement analysis detects screen-switching, off-screen reading, and suspicious focus patterns." },
-  { icon: "terminal", title: "Process Sentinel", desc: "Silent monitoring of running applications flags screen-sharing tools, virtual machines, and cheat software." },
-  { icon: "speed", title: "Real-Time Scoring", desc: "Live trust scores update every second with explainable AI — no black-box decisions." },
+  { icon: "fingerprint", title: "Keystroke Biometrics", desc: "Continuous identity verification through unique typing rhythm analysis — impossible to fake, even with prepared answers." },
+  { icon: "visibility", title: "Gaze Tracking", desc: "AI-powered eye movement analysis detects screen-switching, off-screen reading, and suspicious focus patterns during sessions." },
+  { icon: "terminal", title: "Process Sentinel", desc: "Silent monitoring of running applications flags screen-sharing tools, virtual machines, and unauthorized assistance software." },
+  { icon: "wifi_tethering", title: "Network Monitor", desc: "Detects outbound requests to AI APIs like ChatGPT, Claude, and Gemini — catching candidates using AI assistants in real time." },
+  { icon: "speed", title: "Real-Time Scoring", desc: "Live integrity scores update every second with explainable AI — giving interviewers instant, actionable confidence." },
   { icon: "lock", title: "Privacy-First", desc: "All processing happens on-device. Zero data leaves the candidate's machine. Ever." },
-  { icon: "hub", title: "Seamless Integration", desc: "Drop-in SDK for any LMS or assessment platform. One script tag, full protection." },
+  { icon: "hub", title: "Seamless Integration", desc: "Works with any interview platform or assessment tool. One session code, full protection." },
 ];
 
 const steps = [
-  { num: "01", title: "Candidate Joins", desc: "One-click session entry with system permission grants. No downloads required." },
-  { num: "02", title: "Baseline Capture", desc: "30-second calibration captures the candidate's unique behavioral fingerprint." },
-  { num: "03", title: "Live Monitoring", desc: "Three AI signals run in parallel, scoring trust in real-time with sub-200ms latency." },
-  { num: "04", title: "Proctor Dashboard", desc: "Live feed of all candidates with instant alerts, risk heatmaps, and session replay." },
+  { num: "01", title: "Candidate Launches App", desc: "Candidate opens the Sentinel Zero desktop app and enters the 6-digit session code provided by the interviewer." },
+  { num: "02", title: "Baseline Capture", desc: "30-second calibration captures the candidate's unique behavioral fingerprint before the session begins." },
+  { num: "03", title: "Live Monitoring", desc: "Five AI signals run in parallel, scoring trust in real-time with sub-200ms latency." },
+  { num: "04", title: "Interviewer Dashboard", desc: "Live feed of all candidates with instant alerts, risk heatmaps, and session replay." },
 ];
 
 const footerLinks = {
@@ -78,9 +79,9 @@ export default function LandingPage() {
             <a key={item} href="#" className="font-ui text-[13px] text-text-secondary hover:text-text-primary transition-colors">{item}</a>
           ))}
         </div>
-        <Link href="/signup">
+        <Link href="/login">
           <button className="px-4 py-2 border border-border-active bg-transparent text-text-primary font-ui text-[13px] rounded-[8px] hover:bg-bg-panel transition-colors">
-            Request Demo
+            Sign In
           </button>
         </Link>
       </nav>
@@ -104,7 +105,7 @@ export default function LandingPage() {
           <div className="mb-8 px-4 py-1.5 border border-border-active rounded-full flex items-center gap-2"
             style={{ backgroundColor: "rgba(59,130,246,0.08)", animation: "borderGlow 3s ease-in-out infinite" }}>
             <span className="w-1.5 h-1.5 rounded-full bg-accent-cyan" style={{ animation: "dotPulse 2s ease-in-out infinite" }} />
-            <span className="font-mono text-[11px] text-text-mono uppercase tracking-wider">AI-POWERED PROCTORING</span>
+            <span className="font-mono text-[11px] text-text-mono uppercase tracking-wider">AI-POWERED INTEGRITY</span>
           </div>
 
           <h1 className="font-brand font-bold text-[clamp(36px,6vw,72px)] leading-[1.05] mb-6 tracking-tight">
@@ -118,22 +119,22 @@ export default function LandingPage() {
           </h1>
 
           <p className="font-ui text-[18px] text-text-secondary max-w-[560px] leading-[1.7] mb-10">
-            Sentinel Zero monitors keystroke rhythm, eye gaze, and running processes in real time — flagging anomalies before they become cheating.
+            Sentinel Zero monitors keystroke rhythm, eye gaze, running processes, and network activity in real time — ensuring every interview and assessment is 100% authentic.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 mb-8">
             <Link href="/signup">
               <button className="group h-[52px] px-8 text-white font-ui font-semibold text-[14px] rounded-[10px] flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03]"
                 style={{ background: "linear-gradient(135deg, #3B82F6, #06B6D4)", boxShadow: "0 0 30px rgba(59,130,246,0.25), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
-                <span className="material-symbols-outlined text-[18px]">shield</span>
-                Start Free Trial
+                <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+                Get Started Free
                 <span className="material-symbols-outlined text-[16px] transition-transform group-hover:translate-x-1">arrow_forward</span>
               </button>
             </Link>
             <Link href="/login">
               <button className="h-[52px] px-8 border border-border-active bg-bg-panel/50 text-text-primary font-ui text-[14px] rounded-[10px] flex items-center justify-center gap-2 hover:border-accent-blue/50 hover:bg-bg-panel transition-all duration-300">
-                <span className="material-symbols-outlined text-[16px]">play_arrow</span>
-                Watch Demo
+                <span className="material-symbols-outlined text-[16px]">login</span>
+                Sign In
               </button>
             </Link>
           </div>
@@ -178,7 +179,7 @@ export default function LandingPage() {
                   </svg>
                 </div>
                 <div className="flex gap-3">
-                  {[{ l: "Keystroke", v: "98%", c: "#22C55E" }, { l: "Gaze", v: "94%", c: "#3B82F6" }, { l: "Process", v: "100%", c: "#06B6D4" }].map(s => (
+                  {[{ l: "Keystroke", v: "98%", c: "#22C55E" }, { l: "Gaze", v: "94%", c: "#3B82F6" }, { l: "Process", v: "100%", c: "#06B6D4" }, { l: "Network", v: "100%", c: "#A855F7" }].map(s => (
                     <div key={s.l} className="flex-1 bg-bg-surface border border-border-subtle rounded-lg p-2.5 text-center">
                       <div className="font-mono text-[18px] font-bold" style={{ color: s.c }}>{s.v}</div>
                       <div className="text-[9px] text-text-secondary font-mono uppercase">{s.l}</div>
@@ -210,7 +211,7 @@ export default function LandingPage() {
             {[
               { v: "98.7%", l: "Detection Accuracy", icon: "target" },
               { v: "<200ms", l: "Response Latency", icon: "bolt" },
-              { v: "3", l: "AI Signal Streams", icon: "sensors" },
+              { v: "5", l: "AI Signal Streams", icon: "sensors" },
               { v: "Zero", l: "Cloud Data Storage", icon: "cloud_off" },
             ].map((s, i) => (
               <div key={i} className="flex flex-col items-center text-center p-6 rounded-xl border border-border-subtle/50 bg-bg-panel/30 hover:border-accent-blue/30 transition-all duration-500 hover:bg-bg-panel/60 group">
@@ -229,8 +230,8 @@ export default function LandingPage() {
           <div className="max-w-[1100px] mx-auto">
             <div className="text-center mb-16">
               <span className="font-mono text-[11px] text-accent-cyan uppercase tracking-[0.2em]">CAPABILITIES</span>
-              <h2 className="font-brand font-bold text-[40px] mt-3 mb-4">Three Signals. One Truth.</h2>
-              <p className="text-text-secondary max-w-[500px] mx-auto text-[15px] leading-relaxed">Every exam session is analyzed through three independent AI pipelines that cross-validate in real time.</p>
+              <h2 className="font-brand font-bold text-[40px] mt-3 mb-4">Five Signals. One Truth.</h2>
+              <p className="text-text-secondary max-w-[500px] mx-auto text-[15px] leading-relaxed">Every session is analyzed through five independent AI pipelines that cross-validate in real time.</p>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
               {features.map((f, i) => (
@@ -257,7 +258,7 @@ export default function LandingPage() {
             <div className="text-center mb-16">
               <span className="font-mono text-[11px] text-accent-cyan uppercase tracking-[0.2em]">WORKFLOW</span>
               <h2 className="font-brand font-bold text-[40px] mt-3 mb-4">How It Works</h2>
-              <p className="text-text-secondary max-w-[460px] mx-auto text-[15px] leading-relaxed">From session start to proctor alert — under 30 seconds to full protection.</p>
+              <p className="text-text-secondary max-w-[460px] mx-auto text-[15px] leading-relaxed">From session start to interviewer alert — under 30 seconds to full protection.</p>
             </div>
             <div className="relative">
               <div className="absolute left-[23px] top-0 bottom-0 w-px bg-gradient-to-b from-accent-blue/40 via-accent-cyan/20 to-transparent hidden md:block" />
@@ -284,19 +285,19 @@ export default function LandingPage() {
         <section className="w-full py-24 px-6 relative overflow-hidden">
           <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at center, rgba(59,130,246,0.08) 0%, transparent 50%)" }} />
           <div className="max-w-[640px] mx-auto text-center relative z-10">
-            <h2 className="font-brand font-bold text-[36px] mb-4">Ready to Secure Your Exams?</h2>
-            <p className="text-text-secondary text-[15px] leading-relaxed mb-8">Join institutions worldwide using Sentinel Zero to ensure exam integrity with privacy-first AI.</p>
+            <h2 className="font-brand font-bold text-[36px] mb-4">Ready to Hire with Confidence?</h2>
+            <p className="text-text-secondary text-[15px] leading-relaxed mb-8">Join companies and institutions worldwide using Sentinel Zero to ensure every interview and assessment is authentic.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/signup">
                 <button className="group h-[52px] px-8 text-white font-ui font-semibold text-[14px] rounded-[10px] flex items-center justify-center gap-2 transition-all duration-300 hover:scale-[1.03] mx-auto"
                   style={{ background: "linear-gradient(135deg, #3B82F6, #06B6D4)", boxShadow: "0 0 40px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.1)" }}>
-                  Get Started Free
+                  Start Free Trial
                   <span className="material-symbols-outlined text-[16px] transition-transform group-hover:translate-x-1">arrow_forward</span>
                 </button>
               </Link>
               <Link href="/login">
                 <button className="h-[52px] px-8 border border-border-active bg-transparent text-text-primary font-ui text-[14px] rounded-[10px] flex items-center justify-center gap-2 hover:border-accent-blue/50 transition-all duration-300 mx-auto">
-                  Sign In
+                  Sign In to Dashboard
                 </button>
               </Link>
             </div>

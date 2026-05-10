@@ -2,9 +2,13 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CameraPreview from "@/components/features/CameraPreview";
+import { useSession } from "@/context/SessionContext";
+import { subscribeToSession } from "@/lib/sessions";
+import { supabase } from "@/lib/supabase";
 
 export default function WaitingRoomPage() {
   const router = useRouter();
+  const { sessionId, sessionCode, sessionTitle, interviewerName, durationMinutes } = useSession();
   const [elapsed, setElapsed] = useState(0);
   const [dots, setDots] = useState("");
 
@@ -17,6 +21,28 @@ export default function WaitingRoomPage() {
     const t = setInterval(() => setDots((p) => (p.length >= 3 ? "" : p + ".")), 600);
     return () => clearInterval(t);
   }, []);
+
+  // Subscribe to session status changes — auto-redirect when interviewer starts
+  useEffect(() => {
+    if (!sessionId) return;
+
+    const channel = subscribeToSession(sessionId, (updatedSession) => {
+      if (updatedSession.status === "active") {
+        router.push("/session/live");
+      }
+    });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sessionId, router]);
+
+  // If no session in context, redirect back to join
+  useEffect(() => {
+    if (!sessionId) {
+      router.push("/join");
+    }
+  }, [sessionId, router]);
 
   const fmt = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
@@ -85,11 +111,11 @@ export default function WaitingRoomPage() {
                 Waiting for Session{dots}
               </h1>
               <p className="text-text-secondary text-[13px] leading-relaxed max-w-[360px] mx-auto">
-                Your proctor will start the exam shortly. Please stay on this page and keep your camera active.
+                Your interviewer will start the session shortly. Please stay on this page and keep your camera active.
               </p>
             </div>
 
-            {/* Session info card */}
+            {/* Session info card — REAL DATA */}
             <div className="rounded-2xl border border-border-subtle bg-bg-surface/30 overflow-hidden mb-6"
               style={{ backdropFilter: "blur(8px)" }}>
               {/* Session header */}
@@ -100,10 +126,10 @@ export default function WaitingRoomPage() {
               <div className="p-5">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                   {[
-                    { label: "Session Code", value: "SZ-8821", color: "#3B82F6", mono: true, icon: "tag" },
-                    { label: "Duration", value: "120 min", color: "#06B6D4", mono: true, icon: "timer" },
-                    { label: "Exam Type", value: "Technical Interview", color: "", mono: false, icon: "quiz" },
-                    { label: "Proctor", value: "Dr. Priya Mehta", color: "", mono: false, icon: "person" },
+                    { label: "Session Code", value: sessionCode || "—", color: "#3B82F6", mono: true, icon: "tag" },
+                    { label: "Duration", value: durationMinutes ? `${durationMinutes} min` : "—", color: "#06B6D4", mono: true, icon: "timer" },
+                    { label: "Session", value: sessionTitle || "—", color: "", mono: false, icon: "quiz" },
+                    { label: "Interviewer", value: interviewerName || "—", color: "", mono: false, icon: "person" },
                   ].map((item, i) => (
                     <div key={i} className="flex items-start gap-2.5">
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
@@ -145,7 +171,7 @@ export default function WaitingRoomPage() {
             {/* Dev shortcut */}
             <div className="flex justify-center mt-4">
               <button
-                onClick={() => router.push("/session")}
+                onClick={() => router.push("/session/live")}
                 className="text-[11px] text-text-secondary/40 hover:text-accent-blue/70 transition-colors font-mono flex items-center gap-1"
               >
                 <span className="material-symbols-outlined text-[12px]">code</span>

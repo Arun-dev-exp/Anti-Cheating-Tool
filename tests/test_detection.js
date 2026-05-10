@@ -2,23 +2,23 @@
 // test_detection.js — Unit Tests for DEV1 Detection Module
 //
 // Tests the core logic of the keystroke entropy analyser and Bayesian risk
-// score engine WITHOUT requiring iohook or Electron. Uses a mock approach
+// score engine WITHOUT requiring uiohook-napi or Electron. Uses a mock approach
 // to validate all acceptance criteria from DEV1-detection.md.
 //
 // Run: node tests/test_detection.js
 // ─────────────────────────────────────────────────────────────────────────────
 
-// ── Mock iohook before requiring keystroke.js ────────────────────────────────
-// iohook is a native module that won't load outside Electron, so we intercept
-// the require and provide a controllable mock.
+// ── Mock uiohook-napi before requiring keystroke.js ──────────────────────────
+// uiohook-napi is a native module that won't load outside Electron, so we
+// intercept the require and provide a controllable mock.
 
 const Module = require('module');
 const originalResolveFilename = Module._resolveFilename;
-const mockIohookPath = require.resolve('./mocks/iohook');
+const mockUiohookPath = require.resolve('./mocks/uiohook-napi');
 
 Module._resolveFilename = function (request, parent, isMain, options) {
-  if (request === 'iohook') {
-    return mockIohookPath;
+  if (request === 'uiohook-napi') {
+    return mockUiohookPath;
   }
   return originalResolveFilename.call(this, request, parent, isMain, options);
 };

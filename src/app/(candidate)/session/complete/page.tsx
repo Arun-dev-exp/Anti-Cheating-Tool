@@ -15,6 +15,7 @@ import {
   Eye,
   Monitor,
   ScanFace,
+  Wifi,
   ChevronRight,
 } from "lucide-react";
 
@@ -53,6 +54,13 @@ const riskFactors: RiskFactor[] = [
     key: "liveness",
     value: 4,
     icon: <ScanFace size={16} />,
+    color: "#22C55E",
+  },
+  {
+    label: "Network Monitor",
+    key: "network",
+    value: 2,
+    icon: <Wifi size={16} />,
     color: "#22C55E",
   },
 ];

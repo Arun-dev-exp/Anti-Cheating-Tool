@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
+import { useState, useEffect, use } from "react";
 import IntegrityGauge from "@/components/ui/IntegrityGauge";
 import StatusBadge from "@/components/ui/StatusBadge";
 import GhostButton from "@/components/ui/GhostButton";
-import { useSessionStore } from "@/stores/session-store";
+import { getSessionById, getParticipantsBySession } from "@/lib/sessions";
 import { Download, Printer } from "lucide-react";
 
 const breachEvidence = [
@@ -12,17 +13,62 @@ const breachEvidence = [
   { time: "10:45:23", module: "PROCESS", event: "Unauthorized process: chrome.exe", confidence: 94, candidate: "Amit Joshi" },
 ];
 
-export default function PostSessionReportPage() {
-  const { participants } = useSessionStore();
+interface Participant {
+  id: string;
+  candidate_name: string;
+  integrity_score: number;
+  status: string;
+}
+
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function PostSessionReportPage({ params }: PageProps) {
+  const { id } = use(params);
+  const [session, setSession] = useState<Record<string, unknown> | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const [sess, parts] = await Promise.all([
+        getSessionById(id),
+        getParticipantsBySession(id),
+      ]);
+      setSession(sess);
+      setParticipants((parts || []) as unknown as Participant[]);
+      setLoading(false);
+    }
+    load();
+  }, [id]);
 
   const getStatus = (s: number) => s > 65 ? "secure" as const : s >= 35 ? "suspicious" as const : "breach" as const;
+
+  const sessionCode = (session?.code as string) || "------";
+  const duration = session?.duration_minutes ? `${session.duration_minutes}m` : "—";
+  const avgScore = participants.length > 0 
+    ? (participants.reduce((acc, p) => acc + (p.integrity_score || 0), 0) / participants.length).toFixed(1)
+    : "—";
+  const breaches = participants.filter(p => p.status === "breached" || (p.integrity_score && p.integrity_score < 35)).length;
+
+  if (loading) {
+    return (
+      <main className="p-6 flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-[24px] text-accent-blue animate-spin">progress_activity</span>
+          <span className="text-text-secondary font-mono text-[13px]">Generating report...</span>
+        </div>
+      </main>
+    );
+  }
 
   return (
         <main className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-xl font-brand font-bold text-text-primary mb-1">Post-Session Audit Report</h1>
-              <p className="text-sm text-text-secondary">Session <span className="font-mono text-accent-blue">SZ-8821</span> — May 9, 2026</p>
+              <p className="text-sm text-text-secondary">Session <span className="font-mono text-accent-blue">{sessionCode}</span> — {new Date().toLocaleDateString()}</p>
             </div>
             <div className="flex items-center gap-3">
               <GhostButton className="!h-[38px] !text-xs !px-4"><Download size={14} /> EXPORT PDF</GhostButton>
@@ -33,10 +79,10 @@ export default function PostSessionReportPage() {
           {/* Session Summary */}
           <div className="grid grid-cols-4 gap-4 mb-8">
             {[
-              { label: "Duration", value: "01:58:24" },
+              { label: "Duration", value: duration },
               { label: "Candidates", value: `${participants.length}` },
-              { label: "Avg Score", value: "71.2" },
-              { label: "Breaches", value: "1" },
+              { label: "Avg Score", value: avgScore },
+              { label: "Breaches", value: `${breaches}` },
             ].map((m) => (
               <div key={m.label} className="glass-panel p-4 text-center">
                 <span className="section-header block mb-2">{m.label}</span>
@@ -56,7 +102,7 @@ export default function PostSessionReportPage() {
               })}
             </div>
             <div className="flex justify-between mt-2 text-xs text-text-secondary font-mono">
-              <span>00:00</span><span>00:30</span><span>01:00</span><span>01:30</span><span>01:58</span>
+              <span>00:00</span><span>00:30</span><span>01:00</span><span>01:30</span><span>{duration}</span>
             </div>
           </div>
 
@@ -67,19 +113,27 @@ export default function PostSessionReportPage() {
               <div className="grid grid-cols-5 gap-4 px-4 py-3 border-b border-border-subtle text-xs text-text-secondary uppercase tracking-wider font-ui">
                 <span>Candidate</span><span>Score</span><span>Status</span><span>Verdict</span><span>Details</span>
               </div>
-              {participants.map((p) => (
-                <div key={p.id} className="grid grid-cols-5 gap-4 px-4 py-3 border-b border-border-subtle/50 hover:bg-bg-panel/50 transition-colors">
-                  <span className="text-sm text-text-primary">{p.candidateName}</span>
-                  <span className="font-mono text-sm" style={{ color: p.integrityScore > 65 ? "#22C55E" : p.integrityScore >= 35 ? "#F59E0B" : "#EF4444" }}>{p.integrityScore}</span>
-                  <StatusBadge status={getStatus(p.integrityScore)} />
-                  <span className="text-xs font-mono uppercase" style={{ color: p.verdict === "passed" ? "#22C55E" : p.verdict === "breached" ? "#EF4444" : "#F59E0B" }}>{p.verdict || "PASSED"}</span>
-                  <Link href={`/proctor/session/SZ-8821/candidate/${p.candidateId}`} className="text-xs text-accent-blue hover:underline font-mono">VIEW →</Link>
-                </div>
-              ))}
+              {participants.length === 0 && (
+                <div className="px-4 py-8 text-center text-text-secondary/50 text-sm font-mono">No candidates found</div>
+              )}
+              {participants.map((p) => {
+                const score = p.integrity_score ?? 100;
+                const statusStr = getStatus(score);
+                const isBreached = p.status === "breached" || score < 35;
+                return (
+                  <div key={p.id} className="grid grid-cols-5 gap-4 px-4 py-3 border-b border-border-subtle/50 hover:bg-bg-panel/50 transition-colors">
+                    <span className="text-sm text-text-primary">{p.candidate_name}</span>
+                    <span className="font-mono text-sm" style={{ color: score > 65 ? "#22C55E" : score >= 35 ? "#F59E0B" : "#EF4444" }}>{score}</span>
+                    <StatusBadge status={statusStr} />
+                    <span className="text-xs font-mono uppercase" style={{ color: isBreached ? "#EF4444" : score > 65 ? "#22C55E" : "#F59E0B" }}>{isBreached ? "BREACHED" : score > 65 ? "PASSED" : "FLAGGED"}</span>
+                    <Link href={`/proctor/session/${id}/candidate/${p.id}`} className="text-xs text-accent-blue hover:underline font-mono">VIEW →</Link>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Breach Evidence */}
+          {/* Breach Evidence (Static placeholder for now since we don't have events DB yet) */}
           <div>
             <span className="section-header block mb-4">BREACH EVIDENCE</span>
             <div className="glass-panel overflow-hidden">

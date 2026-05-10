@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+import { AuthProvider } from "@/context/AuthContext";
+
 export const metadata: Metadata = {
-  title: "Sentinel Zero — AI Behavioral Proctoring",
-  description: "Human Behavioral Auditing. Privacy-first, AI-explainable proctoring platform.",
+  title: "Sentinel Zero — AI-Powered Interview Integrity",
+  description: "Real-time behavioral auditing for interviews and assessments. Keystroke biometrics, gaze tracking, process monitoring, and AI API detection — all on-device, privacy-first.",
 };
 
 export default function RootLayout({
@@ -26,7 +28,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full bg-bg-base text-text-primary font-ui antialiased" suppressHydrationWarning>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
